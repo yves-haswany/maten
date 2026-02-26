@@ -1,0 +1,129 @@
+<form id="vote-form">
+  <div class="container">
+
+    <!-- LEFT TABLE - Candidates -->
+    <div>
+        <h3>Candidates</h3>
+        <table id="candidate-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Party</th>
+                    <th>Select</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="3">Select a list to load candidates.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- RIGHT TABLE - Lists -->
+    <div>
+        <h3>Select a List</h3>
+        <table id="list-table">
+            <thead>
+                <tr>
+                    <th>List Name</th>
+                    <th>Select</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for list in lists %}
+                <tr>
+                    <td>{{ list.name }}</td>
+                    <td>
+                        <input type="radio" name="list_id" class="list-radio" value="{{ list.id }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <button type="submit">Submit Vote</button>
+    <a href="{{ url_for('frontend.dashboard') }}">Back to user dashboard</a>
+
+  </div>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const voteForm = document.getElementById("vote-form");
+    const candidateTableBody = document.querySelector("#candidate-table tbody");
+    const listRadios = document.querySelectorAll(".list-radio");
+
+    function loadCandidates(listId) {
+        fetch(`/get-candidates/${listId}`)
+            .then(res => res.json())
+            .then(data => {
+                candidateTableBody.innerHTML = "";
+                if (!data.candidates.length) {
+                    candidateTableBody.innerHTML = "<tr><td colspan='3'>No candidates available for this list.</td></tr>";
+                    return;
+                }
+                data.candidates.forEach(c => {
+                    const row = document.createElement("tr");
+
+                    const nameTd = document.createElement("td");
+                    nameTd.textContent = c.name;
+
+                    const partyTd = document.createElement("td");
+                    partyTd.textContent = c.party;
+
+                    const selectTd = document.createElement("td");
+                    const radio = document.createElement("input");
+                    radio.type = "radio";
+                    radio.name = "candidate_id";  // Important: must match Flask
+                    radio.value = c.candidate_id; // Use candidate_id as returned by backend
+                    selectTd.appendChild(radio);
+
+                    row.appendChild(nameTd);
+                    row.appendChild(partyTd);
+                    row.appendChild(selectTd);
+
+                    candidateTableBody.appendChild(row);
+                });
+            })
+            .catch(err => {
+                console.error("Error loading candidates:", err);
+                candidateTableBody.innerHTML = "<tr><td colspan='3'>Failed to load candidates.</td></tr>";
+            });
+    }
+
+    // Listen for list selection
+    listRadios.forEach(radio => {
+        radio.addEventListener("change", () => {
+            // Clear previously selected candidate
+            const existingCandidate = document.querySelector("input[name='candidate_id']:checked");
+            if (existingCandidate) existingCandidate.checked = false;
+
+            if (radio.checked) loadCandidates(radio.value);
+        });
+    });
+
+    // AJAX form submission
+    voteForm.addEventListener("submit", e => {
+        e.preventDefault();
+        const formData = new FormData(voteForm);
+
+        // Optional: debug
+        console.log([...formData.entries()]); // Should include list_id and candidate_id
+
+        if (!formData.get("list_id")) { alert("Please select a list."); return; }
+        if (!formData.get("candidate_id")) { alert("Please select a candidate."); return; }
+
+        fetch("/submit-vote", { method: "POST", body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) { alert(data.error); return; }
+                alert("Vote submitted successfully!");
+                voteForm.reset();
+                candidateTableBody.innerHTML = "<tr><td colspan='3'>Select a list to load candidates.</td></tr>";
+            })
+            .catch(err => console.error("Error submitting vote:", err));
+    });
+});
+</script>
