@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from io import BytesIO
-
+from sqlalchemy import func
+import csv
 from .. import db
 from ..models import User, Elector, BallotPen, Candidate, CandidateList, Vote
 
@@ -94,11 +95,11 @@ def create_user():
         password = request.form.get("password")
 
         if User.query.count() >= MAX_USERS:
-            return render_template("create_user.html",
+            return render_template("register.html",
                                    error="User limit reached.")
 
         if User.query.filter_by(username=username).first():
-            return render_template("create_user.html",
+            return render_template("register.html",
                                    error="Username already exists.")
 
         hashed = generate_password_hash(password)
@@ -107,10 +108,10 @@ def create_user():
         db.session.add(new_user)
         db.session.commit()
 
-        return render_template("create_user.html",
+        return render_template("register.html",
                                success="User created successfully.")
 
-    return render_template("create_user.html")
+    return render_template("register.html")
 
 
 # ----------------------------
@@ -298,3 +299,82 @@ def admin_sorted_votes():
     return render_template("admin_sorted_votes.html",
                            lists=lists_data,
                            candidates=candidates_data)
+import io
+from flask import send_file
+
+@backend.route("/admin/download-list-totals")
+def download_list_totals():
+    if not is_admin():
+        return "Access denied", 403
+
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        # Header row
+        writer.writerow(["Ballot Pen", "Candidate List", "List Votes"])
+
+        # Query all ballot pens and candidate lists
+        ballot_pens = BallotPen.query.all()
+        candidate_lists = CandidateList.query.all()
+
+        # For each combination of ballot pen and candidate list, count votes
+        for pen in ballot_pens:
+            for c_list in candidate_lists:
+                votes_count = (
+                    db.session.query(func.count(Vote.id))
+                    .join(Candidate)
+                    .filter(
+                        Candidate.list_id == c_list.id,
+                        Vote.ballot_pen_id == pen.id
+                    )
+                    .scalar()
+                )
+                writer.writerow([pen.serial_number, c_list.name, votes_count])
+
+        output.seek(0)
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=list_totals.csv"}
+        )
+
+    except Exception as e:
+        return f"Error generating CSV: {e}", 500
+
+
+@backend.route("/admin/download-candidate-totals")
+def download_candidate_totals():
+    if not is_admin():
+        return "Access denied", 403
+
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        # Header row
+        writer.writerow(["Ballot Pen", "Candidate List", "Candidate", "Candidate Votes"])
+
+        ballot_pens = BallotPen.query.all()
+        candidates = Candidate.query.all()
+
+        # Count votes per candidate per ballot pen
+        for pen in ballot_pens:
+            for candidate in candidates:
+                votes_count = (
+                    db.session.query(func.count(Vote.id))
+                    .filter(
+                        Vote.candidate_id == candidate.id,
+                        Vote.ballot_pen_id == pen.id
+                    )
+                    .scalar()
+                )
+                writer.writerow([pen.serial_number, candidate.candidate_list.name, candidate.name, votes_count])
+
+        output.seek(0)
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=candidate_totals.csv"}
+        )
+
+    except Exception as e:
+        return f"Error generating CSV: {e}", 500

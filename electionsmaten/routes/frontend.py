@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash
 from datetime import datetime
 from io import BytesIO
+from flask import flash
 
 from .. import db
 from ..models import User, Elector, Candidate, CandidateList, Vote
@@ -82,9 +83,57 @@ def index():
             )
             db.session.add(new_elector)
             db.session.commit()
+         
 
     return render_template("index.html")
+@frontend.route("/submit", methods=["POST"])
+def submit_elector():
+    if not is_logged_in():
+        flash("You must be logged in", "error")
+        return redirect(url_for("frontend.index"))
 
+    user = current_user()
+    elector_id = request.form.get("elector_id", "").strip()
+
+    if not elector_id:
+        flash("Elector ID cannot be empty.", "error")
+        return redirect(url_for("frontend.index"))
+
+    # Check for duplicate for this user
+    if Elector.query.filter_by(user_id=user.id, elector_id=elector_id).first():
+        flash("This elector ID is already submitted.", "error")
+        return redirect(url_for("frontend.index"))
+
+    new_elector = Elector(
+        elector_id=elector_id,
+        user_id=user.id,
+        submitted_at=datetime.utcnow()
+    )
+    db.session.add(new_elector)
+    db.session.commit()
+
+    flash("Elector submitted successfully.", "success")
+    return redirect(url_for("frontend.index"))
+
+
+@frontend.route("/cancel-elector/<int:elector_id>", methods=["POST"])
+def cancel_elector(elector_id):
+    if not is_logged_in():
+        flash("You must be logged in", "error")
+        return redirect(url_for("frontend.index"))
+
+    user = current_user()
+    elector = Elector.query.filter_by(user_id=user.id, id=elector_id).first()
+
+    if not elector:
+        flash("Elector not found.", "error")
+        return redirect(url_for("frontend.index"))
+
+    db.session.delete(elector)
+    db.session.commit()
+
+    flash("Elector cancelled successfully.", "success")
+    return redirect(url_for("frontend.index"))
 
 @frontend.route("/view-electors")
 def view_electors():
@@ -94,7 +143,7 @@ def view_electors():
     user = current_user()
     electors = Elector.query.filter_by(user_id=user.id).all()
 
-    return render_template("electors.html", electors=electors)
+    return render_template("index.html")
 
 
 @frontend.route("/export-electors")

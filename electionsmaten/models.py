@@ -34,7 +34,8 @@ class CandidateList(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
     list_votes = db.Column(db.Integer, default=0)
-
+    #ballot_pen_id = db.Column(db.Integer, db.ForeignKey("ballot_pen.id"), nullable=False)
+    #ballot_pen = db.relationship("BallotPen", backref="candidate_lists", lazy=True)
     candidates = db.relationship("Candidate", backref="candidate_list", lazy=True)
 
 
@@ -49,8 +50,8 @@ class Candidate(db.Model):
     votes = db.Column(db.Integer, default=0)
 
     candidate_list_id = db.Column(db.Integer, db.ForeignKey("candidate_list.id"), nullable=False)
-
-
+    
+   
 # ---------------------------
 # BALLOT PEN MODEL
 # ---------------------------
@@ -59,6 +60,7 @@ class BallotPen(db.Model):
     serial_number = db.Column(db.String(120), unique=True, nullable=False)
     status = db.Column(db.String(50), default="in_use")
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True)
+    
   
 class Vote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
