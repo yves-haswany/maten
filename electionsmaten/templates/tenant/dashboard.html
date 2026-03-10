@@ -1,21 +1,31 @@
-{% extends "shared/base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tenant Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+    <header class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Tenant Dashboard</h1>
+        <a href="{{ url_for('tenant.logout') }}" class="logout-button">Logout</a>
+    </header>
 
-{% block content %}
+    <div class="dashboard-grid">
+        <a href="{{ url_for('tenant.vote') }}" class="dashboard-card">
+            <h2>Vote</h2>
+            <p>Participate in elections</p>
+        </a>
 
-<h2>Tenant Dashboard</h2>
+        <a href="{{ url_for('tenant.results') }}" class="dashboard-card">
+            <h2>View Results</h2>
+            <p>Check election results</p>
+        </a>
 
-<ul>
-
-<li><a href="/tenant/create_candidate">Create Candidate</a></li>
-
-<li><a href="/tenant/create_candidate_list">Create Candidate List</a></li>
-
-<li><a href="/tenant/create_user">Create User</a></li>
-
-<li><a href="/tenant/create_ballot_pen">Create Ballot Pen</a></li>
-
-</ul>
-
-<a href="/tenant/logout">Logout</a>
-
-{% endblock %}
+        <a href="{{ url_for('tenant.profile') }}" class="dashboard-card">
+            <h2>Profile</h2>
+            <p>Manage your account</p>
+        </a>
+    </div>
+</body>
+</html>

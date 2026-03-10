@@ -1,21 +1,36 @@
-{% extends "shared/base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+    <header class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+        <a href="{{ url_for('admin.logout') }}" class="logout-button">Logout</a>
+    </header>
 
-{% block content %}
+    <div class="dashboard-grid">
+        <a href="{{ url_for('admin.create_party') }}" class="dashboard-card">
+            <h2>Create Party</h2>
+            <p>Add a new political party</p>
+        </a>
 
-<h2>Admin Dashboard</h2>
+        <a href="{{ url_for('admin.create_district') }}" class="dashboard-card">
+            <h2>Create District</h2>
+            <p>Add a new district</p>
+        </a>
 
-<ul>
+        <a href="{{ url_for('admin.create_election') }}" class="dashboard-card">
+            <h2>Create Election</h2>
+            <p>Add a new election</p>
+        </a>
 
-<li><a href="/admin/create_party">Create Tenant</a></li>
-
-<li><a href="/admin/create_district">Create District</a></li>
-
-<li><a href="/admin/create_election">Create Election</a></li>
-
-<li><a href="/admin/view_votes">View Votes</a></li>
-
-</ul>
-
-<a href="/admin/logout">Logout</a>
-
-{% endblock %}
+        <a href="{{ url_for('admin.export_votes') }}" class="dashboard-card">
+            <h2>Export Votes</h2>
+            <p>Download votes CSV</p>
+        </a>
+    </div>
+</body>
+</html>
