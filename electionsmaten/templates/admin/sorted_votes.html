@@ -1,0 +1,25 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<h2>Sorted Votes</h2>
+
+<table border="1">
+
+<tr>
+<th>Candidate</th>
+<th>Votes</th>
+</tr>
+
+{% for row in results %}
+
+<tr>
+<td>{{ row.name }}</td>
+<td>{{ row.total }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% endblock %}

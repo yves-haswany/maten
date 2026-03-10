@@ -1,0 +1,23 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<h2>Available Elections</h2>
+
+<ul>
+
+{% for election in elections %}
+
+<li>
+<a href="/vote/election/{{ election.id }}">
+{{ election.name }}
+</a>
+</li>
+
+{% endfor %}
+
+</ul>
+
+<a href="/vote/logout">Logout</a>
+
+{% endblock %}

@@ -1,34 +1,21 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-import os
-
-db = SQLAlchemy()
-
+from .models.db import db
 
 def create_app():
+
     app = Flask(__name__)
-    app.secret_key = os.urandom(24)
 
-    # Database configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///electors.db"
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///election.db"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # Ensure exports folder exists
-    os.makedirs("exports", exist_ok=True)
-
-    # Initialize Database
     db.init_app(app)
 
-    # Create Tables
-    with app.app_context():
-        from . import models
-        db.create_all()
+    from .routes.backend.admin import admin_bp
+    from .routes.backend.tenant import tenant_bp
+    from .routes.frontend import frontend_bp
 
-    # ✅ Register Blueprints (NEW STRUCTURE)
-    from .routes.frontend import frontend
-    from .routes.backend import backend
-
-    app.register_blueprint(frontend)
-    app.register_blueprint(backend)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(tenant_bp)
+    app.register_blueprint(frontend_bp)
 
     return app

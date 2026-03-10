@@ -1,0 +1,25 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<h2>Voting Operator Login</h2>
+
+<form method="POST">
+
+<input name="username" placeholder="Username">
+
+<input type="password" name="password" placeholder="Password">
+
+<select name="pen_id">
+
+{% for pen in pens %}
+<option value="{{ pen.id }}">{{ pen.name }}</option>
+{% endfor %}
+
+</select>
+
+<button type="submit">Login</button>
+
+</form>
+
+{% endblock %}

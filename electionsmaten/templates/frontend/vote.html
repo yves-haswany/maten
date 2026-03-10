@@ -1,0 +1,28 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<h2>Vote</h2>
+
+<form method="POST" action="/vote/cast_vote">
+
+<input type="hidden" name="election_id" value="{{ election_id }}">
+
+{% for candidate in candidates %}
+
+<div>
+
+<label>
+<input type="radio" name="candidate_id" value="{{ candidate.id }}">
+{{ candidate.name }}
+</label>
+
+</div>
+
+{% endfor %}
+
+<button type="submit">Submit Vote</button>
+
+</form>
+
+{% endblock %}

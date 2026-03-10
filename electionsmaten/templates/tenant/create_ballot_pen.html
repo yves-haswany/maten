@@ -1,0 +1,23 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<h2>Create Ballot Pen</h2>
+
+<form method="POST">
+
+<input name="name" placeholder="Ballot Pen Name">
+
+<select name="district_id">
+
+{% for district in districts %}
+<option value="{{ district.id }}">{{ district.name }}</option>
+{% endfor %}
+
+</select>
+
+<button type="submit">Create</button>
+
+</form>
+
+{% endblock %}
