@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Election</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+
+<h2>Create Election</h2>
+
+<form method="POST">
+
+    <div class="mb-3">
+        <label class="form-label">Election Name</label>
+        <input type="text" name="name" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Party</label>
+        <select name="party_id" class="form-control" required>
+            {% for party in parties %}
+            <option value="{{ party.id }}">{{ party.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Create Election</button>
+
+</form>
+
+<br>
+
+<a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+
+</body>
+</html>
