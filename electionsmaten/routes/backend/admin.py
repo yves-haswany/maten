@@ -35,7 +35,7 @@ def login():
         user = User.query.filter_by(username=username, is_admin=True).first()
 
         if not user or not check_password_hash(user.password, password):
-            return render_template("auth/admin_login.html", error="Invalid credentials")
+            return render_template("admin/login.html", error="Invalid credentials")
 
         session.clear()
         session["user_id"] = user.id
