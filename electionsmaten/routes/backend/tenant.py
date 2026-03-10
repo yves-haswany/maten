@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-
+import csv
+from io import StringIO
 from ...models.db import db
-from ...models import User, Candidate, CandidateList, BallotPen,Party
+from ...models import User, Candidate, CandidateList, BallotPen,Party, Vote
 
 tenant_bp = Blueprint("tenant", __name__, url_prefix="/tenant")
 
@@ -38,7 +39,7 @@ def login():
 ).first()
 
         if not user or not check_password_hash(user.password, password):
-            return render_template("auth/tenant_login.html", error="Invalid credentials")
+            return render_template("tenant/login.html", error="Invalid credentials")
 
         session.clear()
         session["user_id"] = user.id
@@ -46,7 +47,7 @@ def login():
         session["last_activity"] = datetime.utcnow().timestamp()
         return redirect(url_for("tenant.dashboard"))
 
-    return render_template("auth/tenant_login.html")
+    return render_template("tenant/login.html")
 
 
 @tenant_bp.route("/logout")
@@ -151,3 +152,24 @@ def create_candidate():
         return redirect(url_for("tenant.create_candidate"))
 
     return render_template("tenant/create_candidate.html", lists=candidate_lists)
+@tenant_bp.route("/export-results")
+@tenant_required
+def export_results():
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Ballot Pen", "List Name", "Candidate", "Votes"])
+
+    ballot_pens = BallotPen.query.all()
+    candidates = Candidate.query.all()
+
+    for pen in ballot_pens:
+        for c in candidates:
+            votes = Vote.query.filter(Vote.candidate_id == c.id, Vote.ballot_pen_id == pen.id).count()
+            writer.writerow([pen.serial_number, c.candidate_list.name, c.name, votes])
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=results.csv"}
+    )
