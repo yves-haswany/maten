@@ -4,7 +4,7 @@ from datetime import datetime
 from io import StringIO
 import csv
 
-from ...models.db import db
+from ... import db
 from ...models import Party, Election, District, CandidateList, Candidate, User, BallotPen, Vote
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")

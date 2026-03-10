@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import csv
 from io import StringIO
-from ...models.db import db
+from ... import db
 from ...models import User, Candidate, CandidateList, BallotPen,Party, Vote
 
 tenant_bp = Blueprint("tenant", __name__, url_prefix="/tenant")
