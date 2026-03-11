@@ -1,31 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Tenant Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta charset="UTF-8">
+<title>Tenant Dashboard</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body class="bg-gray-100 min-h-screen p-6">
-    <header class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Tenant Dashboard</h1>
-        <a href="{{ url_for('tenant.logout') }}" class="logout-button">Logout</a>
-    </header>
 
-    <div class="dashboard-grid">
-        <a href="{{ url_for('tenant.vote') }}" class="dashboard-card">
-            <h2>Vote</h2>
-            <p>Participate in elections</p>
-        </a>
+<header class="flex justify-between items-center mb-6">
+<h1 class="text-3xl font-bold">Tenant Dashboard</h1>
 
-        <a href="{{ url_for('tenant.results') }}" class="dashboard-card">
-            <h2>View Results</h2>
-            <p>Check election results</p>
-        </a>
+<a href="{{ url_for('tenant.logout') }}" class="logout-button">
+Logout
+</a>
+</header>
 
-        <a href="{{ url_for('tenant.profile') }}" class="dashboard-card">
-            <h2>Profile</h2>
-            <p>Manage your account</p>
-        </a>
-    </div>
+<div class="dashboard-grid">
+
+<a href="{{ url_for('tenant.create_user') }}" class="dashboard-card">
+<h2>Create Users</h2>
+<p>Create voters for your party</p>
+</a>
+
+<a href="{{ url_for('tenant.create_ballot_pen') }}" class="dashboard-card">
+<h2>Create Ballot Pens</h2>
+<p>Assign ballot pens to voters</p>
+</a>
+
+<a href="{{ url_for('tenant.create_candidate_list') }}" class="dashboard-card">
+<h2>Create Candidate Lists</h2>
+<p>Create election lists</p>
+</a>
+
+<a href="{{ url_for('tenant.create_candidate') }}" class="dashboard-card">
+<h2>Create Candidates</h2>
+<p>Add candidates to lists</p>
+</a>
+
+<a href="{{ url_for('tenant.export_results') }}" class="dashboard-card">
+<h2>Export Results</h2>
+<p>Download vote results</p>
+</a>
+
+</div>
+
 </body>
 </html>

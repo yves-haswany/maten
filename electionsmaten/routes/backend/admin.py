@@ -5,7 +5,7 @@ from io import StringIO
 import csv
 
 from ... import db
-from ...models import Party, Election, District, CandidateList, Candidate, User, BallotPen, Vote
+from ...models import Party, Election, District, CandidateList, Candidate, User, BallotPen, Vote,Tenant
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -70,20 +70,42 @@ def dashboard():
 @admin_bp.route("/create-party", methods=["GET", "POST"])
 @admin_required
 def create_party():
+
     if request.method == "POST":
+
         name = request.form.get("name")
-        if not name:
-            flash("Party name is required.", "error")
-        elif Party.query.filter_by(name=name).first():
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        if not name or not username or not password:
+            flash("All fields are required.", "error")
+            return redirect(url_for("admin.create_party"))
+
+        if Party.query.filter_by(name=name).first():
             flash("Party already exists.", "error")
-        else:
-            party = Party(name=name)
-            db.session.add(party)
-            db.session.commit()
-            flash("Party created successfully.", "success")
+            return redirect(url_for("admin.create_party"))
+
+        # create party
+        party = Party(name=name)
+        db.session.add(party)
+        db.session.commit()
+
+        # create tenant login
+        tenant = Tenant(
+            username=username,
+            password=generate_password_hash(password),
+            party_id=party.id
+        )
+
+        db.session.add(tenant)
+        db.session.commit()
+
+        flash("Party and tenant account created.", "success")
+
         return redirect(url_for("admin.create_party"))
 
     parties = Party.query.all()
+
     return render_template("admin/create_party.html", parties=parties)
 
 

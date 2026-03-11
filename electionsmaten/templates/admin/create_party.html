@@ -2,43 +2,35 @@
 <html>
 <head>
     <title>Create Party</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="container mt-5">
 
-<h2>Create Party</h2>
+<body>
 
-<form method="POST">
-    <div class="mb-3">
-        <label class="form-label">Party Name</label>
-        <input type="text" name="name" class="form-control" required>
-    </div>
+<div class="container">
 
-    <button type="submit" class="btn btn-primary">Create Party</button>
-</form>
+    <h2>Create Party (Tenant)</h2>
 
-<hr>
+    <form method="POST" class="party-form">
 
-<h3>Existing Parties</h3>
+        <label>Party Name</label>
+        <input type="text" name="name" required>
 
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for party in parties %}
-        <tr>
-            <td>{{ party.id }}</td>
-            <td>{{ party.name }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        <label>Tenant Username</label>
+        <input type="text" name="username" required>
 
-<a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        <label>Tenant Password</label>
+        <input type="password" name="password" required>
+
+        <button type="submit" class="btn-primary">Create Party</button>
+
+        <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">
+            Back to Dashboard
+        </a>
+
+    </form>
+
+</div>
 
 </body>
 </html>

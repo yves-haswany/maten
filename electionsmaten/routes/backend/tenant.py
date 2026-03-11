@@ -4,7 +4,7 @@ from datetime import datetime
 import csv
 from io import StringIO
 from ... import db
-from ...models import User, Candidate, CandidateList, BallotPen,Party, Vote
+from ...models import User, Candidate, CandidateList, BallotPen,Party, Vote,Tenant
 
 tenant_bp = Blueprint("tenant", __name__, url_prefix="/tenant")
 
@@ -29,22 +29,23 @@ def tenant_required(func):
 # ----------------------------
 @tenant_bp.route("/login", methods=["GET", "POST"])
 def login():
+
     if request.method == "POST":
+
         username = request.form.get("username")
         password = request.form.get("password")
-        user = User.query.filter(
-    User.username == username,
-    User.is_admin == False,
-    User.party_id != None
-).first()
 
-        if not user or not check_password_hash(user.password, password):
+        tenant = Tenant.query.filter_by(username=username).first()
+
+        if not tenant or not check_password_hash(tenant.password, password):
             return render_template("tenant/login.html", error="Invalid credentials")
 
         session.clear()
-        session["user_id"] = user.id
+        session["tenant_id"] = tenant.id
         session["role"] = "tenant"
+        session["party_id"] = tenant.party_id
         session["last_activity"] = datetime.utcnow().timestamp()
+
         return redirect(url_for("tenant.dashboard"))
 
     return render_template("tenant/login.html")
