@@ -1,179 +1,194 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, Response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-from io import StringIO
-import csv
 
 from ... import db
-from ...models import Party, Election, District, CandidateList, Candidate, User, BallotPen, Vote,Tenant
+from ...models import Party, Tenant, District, User
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
-# ----------------------------
-# Helpers
-# ----------------------------
-def is_admin():
-    return session.get("role") == "admin"
 
-def admin_required(func):
-    def wrapper(*args, **kwargs):
-        if not is_admin():
-            flash("Admin login required.", "error")
-            return redirect(url_for("admin.login"))
-        return func(*args, **kwargs)
-    wrapper.__name__ = func.__name__
-    return wrapper
+# -----------------------
+# LOGIN
+# -----------------------
 
-# ----------------------------
-# LOGIN / LOGOUT
-# ----------------------------
-@admin_bp.route("/login", methods=["GET", "POST"])
+@admin_bp.route("/login", methods=["GET","POST"])
 def login():
+
     if request.method == "POST":
+
         username = request.form.get("username")
         password = request.form.get("password")
-        user = User.query.filter_by(username=username, is_admin=True).first()
 
-        if not user or not check_password_hash(user.password, password):
-            return render_template("admin/login.html", error="Invalid credentials")
+        admin = User.query.filter_by(username=username, role="admin").first()
 
-        session.clear()
-        session["user_id"] = user.id
-        session["role"] = "admin"
-        session["last_activity"] = datetime.utcnow().timestamp()
-        return redirect(url_for("admin.dashboard"))
+        if admin and check_password_hash(admin.password, password):
+
+            session["admin_id"] = admin.id
+
+            return redirect(url_for("admin.dashboard"))
+
+        flash("Invalid credentials")
 
     return render_template("admin/login.html")
 
 
+# -----------------------
+# LOGOUT
+# -----------------------
+
 @admin_bp.route("/logout")
 def logout():
-    session.clear()
+
+    session.pop("admin_id", None)
+
     return redirect(url_for("admin.login"))
 
 
-# ----------------------------
+# -----------------------
 # DASHBOARD
-# ----------------------------
+# -----------------------
+
 @admin_bp.route("/dashboard")
-@admin_required
 def dashboard():
-    parties = Party.query.all()
-    elections = Election.query.all()
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    tenants = Tenant.query.all()
     districts = District.query.all()
-    return render_template("admin/dashboard.html", parties=parties, elections=elections, districts=districts)
+
+    return render_template(
+        "admin/dashboard.html",
+        tenants=tenants,
+        districts=districts
+    )
 
 
-# ----------------------------
-# CREATE PARTY
-# ----------------------------
-@admin_bp.route("/create-party", methods=["GET", "POST"])
-@admin_required
-def create_party():
+# -----------------------
+# CREATE DISTRICT
+# -----------------------
+
+@admin_bp.route("/create-district", methods=["GET","POST"])
+def create_district():
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
 
     if request.method == "POST":
 
         name = request.form.get("name")
+
+        district = District(name=name)
+
+        db.session.add(district)
+        db.session.commit()
+
+        flash("District created")
+
+        return redirect(url_for("admin.create_district"))
+
+    return render_template("admin/create_district.html")
+
+
+# -----------------------
+# CREATE TENANT
+# -----------------------
+
+@admin_bp.route("/create-tenant", methods=["GET","POST"])
+def create_tenant():
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    districts = District.query.all()
+
+    if request.method == "POST":
+
+        party_name = request.form.get("party")
         username = request.form.get("username")
         password = request.form.get("password")
 
-        if not name or not username or not password:
-            flash("All fields are required.", "error")
-            return redirect(url_for("admin.create_party"))
+        district_ids = request.form.getlist("districts")
 
-        if Party.query.filter_by(name=name).first():
-            flash("Party already exists.", "error")
-            return redirect(url_for("admin.create_party"))
+        party = Party.query.filter_by(name=party_name).first()
 
-        # create party
-        party = Party(name=name)
-        db.session.add(party)
-        db.session.commit()
+        if not party:
+            party = Party(name=party_name)
+            db.session.add(party)
+            db.session.commit()
 
-        # create tenant login
         tenant = Tenant(
             username=username,
             password=generate_password_hash(password),
             party_id=party.id
         )
 
+        for d_id in district_ids:
+            district = District.query.get(d_id)
+            tenant.districts.append(district)
+
         db.session.add(tenant)
         db.session.commit()
 
-        flash("Party and tenant account created.", "success")
+        flash("Tenant created")
 
-        return redirect(url_for("admin.create_party"))
+        return redirect(url_for("admin.create_tenant"))
 
-    parties = Party.query.all()
-
-    return render_template("admin/create_party.html", parties=parties)
-
-
-# ----------------------------
-# CREATE DISTRICT
-# ----------------------------
-@admin_bp.route("/create-district", methods=["GET", "POST"])
-@admin_required
-def create_district():
-    elections = Election.query.all()
-    if request.method == "POST":
-        name = request.form.get("name")
-        election_id = request.form.get("election_id")
-        if not name or not election_id:
-            flash("All fields required.", "error")
-        else:
-            district = District(name=name, election_id=election_id)
-            db.session.add(district)
-            db.session.commit()
-            flash("District created successfully.", "success")
-        return redirect(url_for("admin.create_district"))
-
-    return render_template("admin/create_district.html", elections=elections)
-
-
-# ----------------------------
-# CREATE ELECTION
-# ----------------------------
-@admin_bp.route("/create-election", methods=["GET", "POST"])
-@admin_required
-def create_election():
-    parties = Party.query.all()
-    if request.method == "POST":
-        name = request.form.get("name")
-        party_id = request.form.get("party_id")
-        if not name or not party_id:
-            flash("All fields required.", "error")
-        else:
-            election = Election(name=name, party_id=party_id)
-            db.session.add(election)
-            db.session.commit()
-            flash("Election created successfully.", "success")
-        return redirect(url_for("admin.create_election"))
-
-    return render_template("admin/create_election.html", parties=parties)
-
-
-# ----------------------------
-# SORTED VOTES EXPORT
-# ----------------------------
-@admin_bp.route("/export-votes")
-@admin_required
-def export_votes():
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Ballot Pen", "List Name", "Candidate", "Votes"])
-
-    ballot_pens = BallotPen.query.all()
-    candidates = Candidate.query.all()
-
-    for pen in ballot_pens:
-        for c in candidates:
-            votes = Vote.query.filter(Vote.candidate_id == c.id, Vote.ballot_pen_id == pen.id).count()
-            writer.writerow([pen.serial_number, c.candidate_list.name, c.name, votes])
-
-    output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=votes.csv"}
+    return render_template(
+        "admin/create_party.html",
+        districts=districts
     )
+@admin_bp.route("/edit-district/<int:district_id>", methods=["GET", "POST"])
+def edit_district(district_id):
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    district = District.query.get_or_404(district_id)
+
+    if request.method == "POST":
+        district.name = request.form.get("name")
+        db.session.commit()
+        flash("District updated")
+        return redirect(url_for("admin.dashboard"))
+
+    return render_template("admin/edit_district.html", district=district)
+
+# -----------------------
+# EDIT TENANT
+# -----------------------
+@admin_bp.route("/edit-tenant/<int:tenant_id>", methods=["GET", "POST"])
+def edit_tenant(tenant_id):
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    tenant = Tenant.query.get_or_404(tenant_id)
+    districts = District.query.all()
+
+    if request.method == "POST":
+        tenant.username = request.form.get("username")
+        password = request.form.get("password")
+        if password:
+            tenant.password = generate_password_hash(password)
+
+        party_name = request.form.get("party")
+        party = Party.query.filter_by(name=party_name).first()
+        if not party:
+            party = Party(name=party_name)
+            db.session.add(party)
+            db.session.commit()
+        tenant.party_id = party.id
+
+        # Update districts
+        tenant.districts = []  # clear previous districts
+        district_ids = request.form.getlist("districts")
+        for d_id in district_ids:
+            district = District.query.get(d_id)
+            tenant.districts.append(district)
+
+        db.session.commit()
+        flash("Tenant updated")
+        return redirect(url_for("admin.dashboard"))
+
+    return render_template("admin/edit_tenant.html", tenant=tenant, districts=districts)

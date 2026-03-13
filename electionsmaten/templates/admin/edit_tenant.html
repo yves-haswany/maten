@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Tenant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="form-container">
+
+<h2>Edit Tenant</h2>
+
+<form method="POST">
+    <div class="mb-3">
+        <label class="form-label">Username</label>
+        <input type="text" name="username" class="form-control" value="{{ tenant.username }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password (leave blank to keep unchanged)</label>
+        <input type="password" name="password" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Party</label>
+        <input type="text" name="party" class="form-control" value="{{ tenant.party.name }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Districts</label>
+        <select name="districts" class="form-control" multiple>
+            {% for district in districts %}
+                <option value="{{ district.id }}"
+                    {% if district in tenant.districts %}selected{% endif %}>
+                    {{ district.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Update Tenant</button>
+</form>
+
+<br>
+<a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+
+</body>
+</html>

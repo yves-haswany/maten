@@ -1,36 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Create Party</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<title>Create Tenant</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
 
 <body>
 
-<div class="container">
+<div class="form-container">
 
-    <h2>Create Party (Tenant)</h2>
+<h2>Create Tenant</h2>
 
-    <form method="POST" class="party-form">
+<form method="POST">
 
-        <label>Party Name</label>
-        <input type="text" name="name" required>
+<div class="form-group">
 
-        <label>Tenant Username</label>
-        <input type="text" name="username" required>
+<label>Party Name</label>
 
-        <label>Tenant Password</label>
-        <input type="password" name="password" required>
+<input
+type="text"
+name="party"
+placeholder="Enter party name"
+required>
 
-        <button type="submit" class="btn-primary">Create Party</button>
+</div>
 
-        <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">
-            Back to Dashboard
-        </a>
 
-    </form>
+<div class="form-group">
+
+<label>Tenant Username</label>
+
+<input
+type="text"
+name="username"
+placeholder="Enter tenant username"
+required>
+
+</div>
+
+
+<div class="form-group">
+
+<label>Tenant Password</label>
+
+<input
+type="password"
+name="password"
+placeholder="Enter password"
+required>
+
+</div>
+
+
+<div class="form-group">
+
+<label>Assign Districts</label>
+
+<div class="checkbox-group">
+
+{% for district in districts %}
+
+<label class="checkbox-item">
+
+<input
+type="checkbox"
+name="districts"
+value="{{ district.id }}">
+
+{{ district.name }}
+
+</label>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+
+<button type="submit">Create Tenant</button>
+
+</form>
+
+
+<a href="{{ url_for('admin.dashboard') }}" class="back-link">
+
+Back to Dashboard
+
+</a>
 
 </div>
 
 </body>
+
 </html>

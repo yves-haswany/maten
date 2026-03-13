@@ -1,23 +1,41 @@
-{% extends "shared/base.html" %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Ballot Pen</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
 
-{% block content %}
+<body>
+
+<div class="form-container">
 
 <h2>Create Ballot Pen</h2>
 
 <form method="POST">
 
-<input name="name" placeholder="Ballot Pen Name">
+<div class="form-group">
+<label>Ballot Pen Name</label>
+<input type="text" name="name" required>
+</div>
 
-<select name="district_id">
-
-{% for district in districts %}
-<option value="{{ district.id }}">{{ district.name }}</option>
+<div class="form-group">
+<label>Assign to User</label>
+<select name="user_id" required>
+{% for user in users %}
+<option value="{{ user.id }}">{{ user.username }}</option>
 {% endfor %}
-
 </select>
+</div>
 
-<button type="submit">Create</button>
+<button type="submit">Create Ballot Pen</button>
 
 </form>
 
-{% endblock %}
+<a href="{{ url_for('tenant.dashboard') }}" class="back-link">
+Back to Dashboard
+</a>
+
+</div>
+
+</body>
+</html>

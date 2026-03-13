@@ -12,7 +12,7 @@
     </header>
 
     <div class="dashboard-grid">
-        <a href="{{ url_for('admin.create_party') }}" class="dashboard-card">
+        <a href="{{ url_for('admin.create_tenant') }}" class="dashboard-card">
             <h2>Create Party</h2>
             <p>Add a new political party</p>
         </a>
@@ -22,7 +22,7 @@
             <p>Add a new district</p>
         </a>
 
-        <a href="{{ url_for('admin.create_election') }}" class="dashboard-card">
+       {#<a href="{{ url_for('admin.create_election') }}" class="dashboard-card">
             <h2>Create Election</h2>
             <p>Add a new election</p>
         </a>
@@ -30,7 +30,7 @@
         <a href="{{ url_for('admin.export_votes') }}" class="dashboard-card">
             <h2>Export Votes</h2>
             <p>Download votes CSV</p>
-        </a>
+        </a>#}
     </div>
 </body>
 </html>

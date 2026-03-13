@@ -1,15 +1,37 @@
-{% extends "shared/base.html" %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Candidate List</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
 
-{% block content %}
+<body>
+
+<div class="form-container">
 
 <h2>Create Candidate List</h2>
 
 <form method="POST">
 
-<input name="name" placeholder="List Name">
+<div class="form-group">
+<label>List Name</label>
+<input type="text" name="name" required>
+</div>
 
-<button type="submit">Create</button>
+<div class="form-group">
+<label>Election ID</label>
+<input type="number" name="election_id" required>
+</div>
+
+<button type="submit">Create List</button>
 
 </form>
 
-{% endblock %}
+<a href="{{ url_for('tenant.dashboard') }}" class="back-link">
+Back to Dashboard
+</a>
+
+</div>
+
+</body>
+</html>

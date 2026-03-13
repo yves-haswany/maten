@@ -1,26 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Create District</title>
+    <title>Edit District</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="form-container">
 
-<h2>Create District</h2>
+<h2>Edit District</h2>
 
 <form method="POST">
-
     <div class="mb-3">
         <label class="form-label">District Name</label>
-        <input type="text" name="name" class="form-control" placeholder="Enter district name" required>
+        <input type="text" name="name" class="form-control" value="{{ district.name }}" required>
     </div>
-
-    <button type="submit" class="btn btn-primary">Create District</button>
-
+    <button type="submit" class="btn btn-primary">Update District</button>
 </form>
 
 <br>
-
 <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
 
 </body>

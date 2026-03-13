@@ -1,4 +1,21 @@
-/* ===== Login Forms ===== */
+/* ===============================
+   GLOBAL STYLES
+================================ */
+
+body {
+    margin: 0;
+    background: #f4f6f9;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+    text-decoration: none;
+}
+
+/* ===============================
+   LOGIN FORMS
+================================ */
+
 .login-container {
     max-width: 400px;
     margin: 80px auto;
@@ -39,37 +56,135 @@
     background-color: #2563eb;
 }
 
-/* Error message */
+/* ===============================
+   CREATION FORMS (ADMIN + TENANT)
+================================ */
+
+.form-container {
+    width: 420px;
+    margin: 80px auto;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+.form-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-container input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+.form-container select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+.form-container button {
+    width: 100%;
+    padding: 10px;
+    background: #2b6cb0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.form-container button:hover {
+    background: #1e4e8c;
+}
+
+.back-link {
+    display: block;
+    margin-top: 15px;
+    text-align: center;
+    color: #2563eb;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+/* ===============================
+   ERROR MESSAGE
+================================ */
+
 .error-message {
     background-color: #fee2e2;
     color: #b91c1c;
-    padding: 0.5rem;
+    padding: 0.6rem;
     margin-bottom: 1rem;
     border-radius: 6px;
     text-align: center;
 }
 
-/* ===== Dashboard ===== */
+/* ===============================
+   DASHBOARD LAYOUT
+================================ */
+
+.dashboard-container {
+    max-width: 1100px;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+/* header */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.dashboard-title {
+    font-size: 30px;
+    font-weight: bold;
+}
+
+/* ===============================
+   DASHBOARD GRID
+================================ */
+
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 25px;
 }
+
+/* cards */
 
 .dashboard-card {
     background-color: #fff;
-    padding: 1.5rem;
+    padding: 1.8rem;
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     text-align: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     color: #1f2937;
 }
 
 .dashboard-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.12);
 }
 
 .dashboard-card h2 {
@@ -82,13 +197,16 @@
     font-size: 0.9rem;
 }
 
-/* Logout button */
+/* ===============================
+   LOGOUT BUTTON
+================================ */
+
 .logout-button {
     background-color: #ef4444;
     color: #fff;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.2rem;
     border-radius: 8px;
-    text-decoration: none;
+    font-size: 0.9rem;
 }
 
 .logout-button:hover {
