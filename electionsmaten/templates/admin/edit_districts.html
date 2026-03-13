@@ -1,0 +1,10 @@
+<h2>Edit Districts</h2>
+<ul>
+    {% for district in districts %}
+    <li>
+        {{ district.name }}
+        <a href="{{ url_for('admin.edit_district', district_id=district.id) }}">Edit</a>
+    </li>
+    {% endfor %}
+</ul>
+<a href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>

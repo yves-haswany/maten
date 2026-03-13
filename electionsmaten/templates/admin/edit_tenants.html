@@ -1,0 +1,10 @@
+<h2>Edit Tenants</h2>
+<ul>
+    {% for tenant in tenants %}
+    <li>
+        {{ tenant.username }} ({{ tenant.party.name if tenant.party else '' }})
+        <a href="{{ url_for('admin.edit_tenant', tenant_id=tenant.id) }}">Edit</a>
+    </li>
+    {% endfor %}
+</ul>
+<a href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>

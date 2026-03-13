@@ -138,6 +138,14 @@ def create_tenant():
         "admin/create_party.html",
         districts=districts
     )
+@admin_bp.route("/edit-districts")
+def edit_districts():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    districts = District.query.all()
+    return render_template("admin/edit_districts.html", districts=districts)
+
 @admin_bp.route("/edit-district/<int:district_id>", methods=["GET", "POST"])
 def edit_district(district_id):
 
@@ -157,6 +165,13 @@ def edit_district(district_id):
 # -----------------------
 # EDIT TENANT
 # -----------------------
+@admin_bp.route("/edit-tenants")
+def edit_tenants():
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    tenants = Tenant.query.all()
+    return render_template("admin/edit_tenants.html", tenants=tenants)
 @admin_bp.route("/edit-tenant/<int:tenant_id>", methods=["GET", "POST"])
 def edit_tenant(tenant_id):
 

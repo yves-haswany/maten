@@ -31,6 +31,25 @@
             <h2>Export Votes</h2>
             <p>Download votes CSV</p>
         </a>#}
+       <h2>Districts</h2>
+<ul>
+    {% for district in districts %}
+        <li>
+            {{ district.name }}
+            <a href="{{ url_for('admin.edit_district', district_id=district.id) }}" class="btn btn-sm btn-warning">Edit</a>
+        </li>
+    {% endfor %}
+</ul>
+
+<h2>Tenants</h2>
+<ul>
+    {% for tenant in tenants %}
+        <li>
+            {{ tenant.username }} 
+            <a href="{{ url_for('admin.edit_tenant', tenant_id=tenant.id) }}" class="btn btn-sm btn-warning">Edit</a>
+        </li>
+    {% endfor %}
+</ul>
     </div>
 </body>
 </html>
