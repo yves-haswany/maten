@@ -24,7 +24,6 @@ def login():
         if admin and check_password_hash(admin.password, password):
 
             session["admin_id"] = admin.id
-
             return redirect(url_for("admin.dashboard"))
 
         flash("Invalid credentials")
@@ -54,14 +53,7 @@ def dashboard():
     if "admin_id" not in session:
         return redirect(url_for("admin.login"))
 
-    tenants = Tenant.query.all()
-    districts = District.query.all()
-
-    return render_template(
-        "admin/dashboard.html",
-        tenants=tenants,
-        districts=districts
-    )
+    return render_template("admin/dashboard.html")
 
 
 # -----------------------
@@ -138,13 +130,47 @@ def create_tenant():
         "admin/create_party.html",
         districts=districts
     )
-@admin_bp.route("/edit-districts")
-def edit_districts():
+
+
+# -----------------------
+# VIEW DISTRICTS (NEW)
+# -----------------------
+
+@admin_bp.route("/districts")
+def view_districts():
+
     if "admin_id" not in session:
         return redirect(url_for("admin.login"))
 
     districts = District.query.all()
-    return render_template("admin/edit_districts.html", districts=districts)
+
+    return render_template(
+        "admin/view_districts.html",
+        districts=districts
+    )
+
+
+# -----------------------
+# VIEW TENANTS (NEW)
+# -----------------------
+
+@admin_bp.route("/tenants")
+def view_tenants():
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    tenants = Tenant.query.all()
+
+    return render_template(
+        "admin/view_tenants.html",
+        tenants=tenants
+    )
+
+
+# -----------------------
+# EDIT DISTRICT
+# -----------------------
 
 @admin_bp.route("/edit-district/<int:district_id>", methods=["GET", "POST"])
 def edit_district(district_id):
@@ -155,23 +181,25 @@ def edit_district(district_id):
     district = District.query.get_or_404(district_id)
 
     if request.method == "POST":
-        district.name = request.form.get("name")
-        db.session.commit()
-        flash("District updated")
-        return redirect(url_for("admin.dashboard"))
 
-    return render_template("admin/edit_district.html", district=district)
+        district.name = request.form.get("name")
+
+        db.session.commit()
+
+        flash("District updated")
+
+        return redirect(url_for("admin.view_districts"))
+
+    return render_template(
+        "admin/edit_district.html",
+        district=district
+    )
+
 
 # -----------------------
 # EDIT TENANT
 # -----------------------
-@admin_bp.route("/edit-tenants")
-def edit_tenants():
-    if "admin_id" not in session:
-        return redirect(url_for("admin.login"))
 
-    tenants = Tenant.query.all()
-    return render_template("admin/edit_tenants.html", tenants=tenants)
 @admin_bp.route("/edit-tenant/<int:tenant_id>", methods=["GET", "POST"])
 def edit_tenant(tenant_id):
 
@@ -182,28 +210,82 @@ def edit_tenant(tenant_id):
     districts = District.query.all()
 
     if request.method == "POST":
+
         tenant.username = request.form.get("username")
+
         password = request.form.get("password")
+
         if password:
             tenant.password = generate_password_hash(password)
 
         party_name = request.form.get("party")
+
         party = Party.query.filter_by(name=party_name).first()
+
         if not party:
             party = Party(name=party_name)
             db.session.add(party)
             db.session.commit()
+
         tenant.party_id = party.id
 
-        # Update districts
-        tenant.districts = []  # clear previous districts
+        # update districts
+        tenant.districts = []
+
         district_ids = request.form.getlist("districts")
+
         for d_id in district_ids:
             district = District.query.get(d_id)
             tenant.districts.append(district)
 
         db.session.commit()
-        flash("Tenant updated")
-        return redirect(url_for("admin.dashboard"))
 
-    return render_template("admin/edit_tenant.html", tenant=tenant, districts=districts)
+        flash("Tenant updated")
+
+        return redirect(url_for("admin.view_tenants"))
+
+    return render_template(
+        "admin/edit_tenant.html",
+        tenant=tenant,
+        districts=districts
+    )
+
+
+# -----------------------
+# DELETE DISTRICT (NEW)
+# -----------------------
+
+@admin_bp.route("/delete-district/<int:district_id>", methods=["POST"])
+def delete_district(district_id):
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    district = District.query.get_or_404(district_id)
+
+    db.session.delete(district)
+    db.session.commit()
+
+    flash("District deleted")
+
+    return redirect(url_for("admin.view_districts"))
+
+
+# -----------------------
+# DELETE TENANT (NEW)
+# -----------------------
+
+@admin_bp.route("/delete-tenant/<int:tenant_id>", methods=["POST"])
+def delete_tenant(tenant_id):
+
+    if "admin_id" not in session:
+        return redirect(url_for("admin.login"))
+
+    tenant = Tenant.query.get_or_404(tenant_id)
+
+    db.session.delete(tenant)
+    db.session.commit()
+
+    flash("Tenant deleted")
+
+    return redirect(url_for("admin.view_tenants"))

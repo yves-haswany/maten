@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Districts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<h2>Districts</h2>
+
+<table border="1" cellpadding="10">
+
+    <thead>
+        <tr>
+            <th>District Name</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        {% for district in districts %}
+
+        <tr>
+
+            <td>{{ district.name }}</td>
+
+            <td>
+
+                <a href="{{ url_for('admin.edit_district', district_id=district.id) }}">
+                    <button>Edit</button>
+                </a>
+
+                <form action="{{ url_for('admin.delete_district', district_id=district.id) }}"
+                      method="POST"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this district?');">
+
+                    <button type="submit">Delete</button>
+
+                </form>
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+<br>
+
+<a href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+
+</body>
+</html>
