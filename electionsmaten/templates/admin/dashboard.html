@@ -5,51 +5,42 @@
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body class="bg-gray-100 min-h-screen p-6">
-    <header class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Admin Dashboard</h1>
-        <a href="{{ url_for('admin.logout') }}" class="logout-button">Logout</a>
-    </header>
 
-    <div class="dashboard-grid">
-        <a href="{{ url_for('admin.create_tenant') }}" class="dashboard-card">
-            <h2>Create Party</h2>
-            <p>Add a new political party</p>
-        </a>
+<header class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+    <a href="{{ url_for('admin.logout') }}" class="logout-button">Logout</a>
+</header>
 
-        <a href="{{ url_for('admin.create_district') }}" class="dashboard-card">
-            <h2>Create District</h2>
-            <p>Add a new district</p>
-        </a>
+<div class="dashboard-grid">
 
-       {#<a href="{{ url_for('admin.create_election') }}" class="dashboard-card">
-            <h2>Create Election</h2>
-            <p>Add a new election</p>
-        </a>
+    <!-- Create Tenant -->
+    <a href="{{ url_for('admin.create_tenant') }}" class="dashboard-card">
+        <h2>Create Tenant</h2>
+        <p>Add a new tenant</p>
+    </a>
 
-        <a href="{{ url_for('admin.export_votes') }}" class="dashboard-card">
-            <h2>Export Votes</h2>
-            <p>Download votes CSV</p>
-        </a>#}
-       <h2>Districts</h2>
-<ul>
-    {% for district in districts %}
-        <li>
-            {{ district.name }}
-            <a href="{{ url_for('admin.edit_district', district_id=district.id) }}" class="btn btn-sm btn-warning">Edit</a>
-        </li>
-    {% endfor %}
-</ul>
+    <!-- Create District -->
+    <a href="{{ url_for('admin.create_district') }}" class="dashboard-card">
+        <h2>Create District</h2>
+        <p>Add a new district</p>
+    </a>
 
-<h2>Tenants</h2>
-<ul>
-    {% for tenant in tenants %}
-        <li>
-            {{ tenant.username }} 
-            <a href="{{ url_for('admin.edit_tenant', tenant_id=tenant.id) }}" class="btn btn-sm btn-warning">Edit</a>
-        </li>
-    {% endfor %}
-</ul>
-    </div>
+    <!-- Manage Tenants -->
+    <a href="{{ url_for('admin.view_tenants') }}" class="dashboard-card">
+        <h2>Manage Tenants</h2>
+        <p>Edit or delete existing tenants</p>
+    </a>
+
+    <!-- Manage Districts -->
+    <a href="{{ url_for('admin.view_districts') }}" class="dashboard-card">
+        <h2>Manage Districts</h2>
+        <p>Edit or delete existing districts</p>
+    </a>
+
+
+</div>
+
 </body>
 </html>

@@ -21,6 +21,12 @@ tenant_ballot_pen = db.Table(
     db.Column("tenant_id", db.Integer, db.ForeignKey("tenant.id"), primary_key=True),
     db.Column("ballot_pen_id", db.Integer, db.ForeignKey("ballot_pen.id"), primary_key=True)
 )
+candidate_list_party = db.Table(
+    "candidate_list_party",
+    db.Column("candidate_list_id", db.Integer, db.ForeignKey("candidate_list.id"), primary_key=True),
+    db.Column("party_id", db.Integer, db.ForeignKey("party.id"), primary_key=True)
+)
+
 
 
 # ---------------------------
@@ -32,6 +38,7 @@ class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     name = db.Column(db.String(120), unique=True, nullable=False)
+    candidate_lists = db.relationship("CandidateList", secondary=candidate_list_party, backref="parties")
 
 
 # ---------------------------
@@ -57,6 +64,7 @@ class District(db.Model):
         back_populates="district",
         lazy=True
     )
+    candidate_lists = db.relationship("CandidateList", backref="district", lazy=True)
 
 
 # ---------------------------
@@ -71,15 +79,16 @@ class CandidateList(db.Model):
 
     
 
-    party_id = db.Column(
-        db.Integer,
-        db.ForeignKey("party.id")
-    )
+    parties = db.relationship("Party", secondary=candidate_list_party, backref="candidate_lists")
 
     candidates = db.relationship(
         "Candidate",
         backref="candidate_list",
         lazy=True
+    )
+    district_id = db.Column(
+        db.Integer,
+        db.ForeignKey("district.id")
     )
 
 
@@ -247,6 +256,7 @@ class Tenant(db.Model):
         secondary=tenant_ballot_pen,
         back_populates="tenants"
     )
+    party = db.relationship("Party")
 
 
 # ---------------------------

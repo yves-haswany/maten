@@ -212,3 +212,14 @@ a {
 .logout-button:hover {
     background-color: #dc2626;
 }
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}

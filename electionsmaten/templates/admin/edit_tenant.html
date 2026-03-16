@@ -4,14 +4,17 @@
     <title>Edit Tenant</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body class="form-container">
 
 <h2>Edit Tenant</h2>
 
 <form method="POST">
+
     <div class="mb-3">
         <label class="form-label">Username</label>
-        <input type="text" name="username" class="form-control" value="{{ tenant.username }}" required>
+        <input type="text" name="username" class="form-control"
+               value="{{ tenant.username }}" required>
     </div>
 
     <div class="mb-3">
@@ -21,26 +24,41 @@
 
     <div class="mb-3">
         <label class="form-label">Party</label>
-        <input type="text" name="party" class="form-control" value="{{ tenant.party.name }}" required>
+        <input type="text" name="party" class="form-control"
+               value="{{ tenant.party.name }}" required>
     </div>
 
     <div class="mb-3">
         <label class="form-label">Districts</label>
-        <select name="districts" class="form-control" multiple>
+
+        <div class="checkbox-group">
+
             {% for district in districts %}
-                <option value="{{ district.id }}"
-                    {% if district in tenant.districts %}selected{% endif %}>
+            <div class="checkbox-item">
+                <input type="checkbox"
+                       name="districts"
+                       value="{{ district.id }}"
+                       id="district{{ district.id }}"
+                       {% if district in tenant.districts %}checked{% endif %}>
+
+                <label for="district{{ district.id }}">
                     {{ district.name }}
-                </option>
+                </label>
+            </div>
             {% endfor %}
-        </select>
+
+        </div>
     </div>
 
     <button type="submit" class="btn btn-primary">Update Tenant</button>
+
 </form>
 
 <br>
-<a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+
+<a href="{{ url_for('admin.view_tenants') }}" class="btn btn-secondary">
+    Back to Tenants
+</a>
 
 </body>
 </html>

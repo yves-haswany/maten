@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Districts</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="bg-gray-100 min-h-screen p-6">
+
+<header class="flex justify-between items-center mb-6">
+<h1 class="text-3xl font-bold">My Districts</h1>
+
+<a href="{{ url_for('tenant.dashboard') }}" class="logout-button">
+Back to Dashboard
+</a>
+</header>
+
+<table class="table-auto border-collapse border w-full bg-white">
+
+<thead>
+<tr>
+<th class="border p-3 text-left">District Name</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for district in districts %}
+
+<tr>
+<td class="border p-3">{{ district.name }}</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</body>
+</html>
