@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -18,29 +19,34 @@ Logout
 
 <div class="dashboard-grid">
 
-<a href="{{ url_for('tenant.create_user') }}" class="dashboard-card">
-<h2>Create Users</h2>
-<p>Create voters for your party</p>
+<a href="{{ url_for('tenant.view_districts') }}" class="dashboard-card">
+<h2>View My Districts</h2>
+<p>See the districts your party participates in</p>
 </a>
 
-<a href="{{ url_for('tenant.create_ballot_pen') }}" class="dashboard-card">
-<h2>Create Ballot Pens</h2>
-<p>Assign ballot pens to voters</p>
+<a href="{{ url_for('tenant.create_list') }}" class="dashboard-card">
+<h2>Create Candidate List</h2>
+<p>Create a new election list for one of your districts</p>
 </a>
 
-<a href="{{ url_for('tenant.create_candidate_list') }}" class="dashboard-card">
-<h2>Create Candidate Lists</h2>
-<p>Create election lists</p>
+<a href="{{ url_for('tenant.view_lists') }}" class="dashboard-card">
+<h2>Manage Candidate Lists</h2>
+<p>View, edit, or delete your lists</p>
 </a>
 
 <a href="{{ url_for('tenant.create_candidate') }}" class="dashboard-card">
-<h2>Create Candidates</h2>
-<p>Add candidates to lists</p>
+<h2>Create Candidate</h2>
+<p>Add a candidate to one of your lists</p>
 </a>
 
-<a href="{{ url_for('tenant.export_results') }}" class="dashboard-card">
+<a href="{{ url_for('tenant.view_candidates') }}" class="dashboard-card">
+<h2>Manage Candidates</h2>
+<p>View, edit, or delete candidates</p>
+</a>
+
+<a href="{{ url_for('tenant.download_results') }}" class="dashboard-card">
 <h2>Export Results</h2>
-<p>Download vote results</p>
+<p>Download voting results as a CSV file</p>
 </a>
 
 </div>

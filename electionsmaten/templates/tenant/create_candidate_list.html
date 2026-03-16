@@ -19,8 +19,22 @@
 </div>
 
 <div class="form-group">
-<label>Election ID</label>
-<input type="number" name="election_id" required>
+<label>District</label>
+
+<select name="district_id" required>
+
+<option value="">Select District</option>
+
+{% for district in districts %}
+
+<option value="{{ district.id }}">
+{{ district.name }}
+</option>
+
+{% endfor %}
+
+</select>
+
 </div>
 
 <button type="submit">Create List</button>

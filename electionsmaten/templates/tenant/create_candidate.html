@@ -19,8 +19,27 @@
 </div>
 
 <div class="form-group">
-<label>Candidate List ID</label>
-<input type="number" name="list_id" required>
+<label>Party Name</label>
+<input type="text" name="party_name" required>
+</div>
+
+<div class="form-group">
+<label>Candidate List</label>
+
+<select name="list_id" required>
+
+<option value="">Select List</option>
+
+{% for list in lists %}
+
+<option value="{{ list.id }}">
+{{ list.name }}
+</option>
+
+{% endfor %}
+
+</select>
+
 </div>
 
 <button type="submit">Create Candidate</button>

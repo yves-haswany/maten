@@ -38,7 +38,7 @@ class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     name = db.Column(db.String(120), unique=True, nullable=False)
-    candidate_lists = db.relationship("CandidateList", secondary=candidate_list_party, backref="parties")
+    candidate_lists = db.relationship("CandidateList", secondary=candidate_list_party, backref="party")
 
 
 # ---------------------------
@@ -79,7 +79,7 @@ class CandidateList(db.Model):
 
     
 
-    parties = db.relationship("Party", secondary=candidate_list_party, backref="candidate_lists")
+    parties = db.relationship("Party", secondary=candidate_list_party, backref="candidate_list")
 
     candidates = db.relationship(
         "Candidate",
