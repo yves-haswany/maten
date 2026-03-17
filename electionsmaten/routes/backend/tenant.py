@@ -176,25 +176,36 @@ def delete_list(list_id):
 # ADD CANDIDATE (INLINE)
 # -----------------------
 
-@tenant_bp.route("/add-candidate/<int:list_id>", methods=["GET","POST"])
+@tenant_bp.route("/add-candidate/<int:list_id>", methods=["GET", "POST"])
 def add_candidate(list_id):
 
     if "tenant_id" not in session:
         return redirect(url_for("tenant.login"))
 
-    name = request.form.get("name")
-    party_name = request.form.get("party_name")
+    candidate_list = CandidateList.query.get_or_404(list_id)
 
-    candidate = Candidate(
-        name=name,
-        party_name=party_name,
-        candidate_list_id=list_id
-    )
+    if request.method == "POST":
 
-    db.session.add(candidate)
-    db.session.commit()
+        name = request.form.get("name")
+        party_id = request.form.get("party_id")
 
-    return redirect(url_for("tenant.manage_lists"))
+        # 🔒 Validate party belongs to list
+        if int(party_id) not in [p.id for p in candidate_list.parties]:
+            flash("Invalid party for this list", "danger")
+            return redirect(url_for("tenant.manage_lists"))
+
+        candidate = Candidate(
+            name=name,
+            candidate_list_id=list_id,
+            party_id=party_id
+        )
+
+        db.session.add(candidate)
+        db.session.commit()
+
+        return redirect(url_for("tenant.manage_lists"))
+
+    return render_template("tenant/add_candidate.html", list=candidate_list)
 
 
 # -----------------------
@@ -210,9 +221,19 @@ def edit_candidate(candidate_id):
     candidate = Candidate.query.get_or_404(candidate_id)
 
     if request.method == "POST":
-        candidate.name = request.form.get("name")
-        candidate.party_name = request.form.get("party_name")
+        name = request.form.get("name")
+        party_id = request.form.get("party_id")
+
+        # 🔒 Validate party belongs to the list alliance
+        if int(party_id) not in [p.id for p in candidate.candidate_list.parties]:
+            flash("Invalid party for this list", "danger")
+            return redirect(url_for("tenant.manage_lists"))
+
+        candidate.name = name
+        candidate.party_id = party_id  # ✅ correct field
+
         db.session.commit()
+
         return redirect(url_for("tenant.manage_lists"))
 
     return render_template(

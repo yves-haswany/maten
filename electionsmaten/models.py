@@ -110,7 +110,8 @@ class Candidate(db.Model):
 
     party_id = db.Column(
         db.Integer,
-        db.ForeignKey("party.id")
+        db.ForeignKey("party.id"),
+        nullable=False
     )
 
     votes = db.relationship(
@@ -118,6 +119,7 @@ class Candidate(db.Model):
         backref="candidate",
         lazy=True
     )
+    party = db.relationship("Party")
 
 
 # ---------------------------

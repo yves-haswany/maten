@@ -17,7 +17,11 @@
 <input type="text" name="name" required>
 
 <label>Party Name</label>
-<input type="text" name="party_name" required>
+ <select name="party_id" required>
+    {% for party in list.parties %}
+        <option value="{{ party.id }}">{{ party.name }}</option>
+    {% endfor %}
+</select>
 
 <br><br>
 
