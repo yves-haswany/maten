@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Lists</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="table-container">
+
+<h2>Candidate Lists & Candidates</h2>
+
+<a href="{{ url_for('tenant.create_list') }}" class="create-button">
++ Create New List
+</a>
+
+<br><br>
+
+{% for list in lists %}
+
+<div class="list-card">
+
+<h3>
+{{ list.name }} ({{ list.district.name }})
+</h3>
+
+<!-- LIST ACTIONS -->
+<div class="list-actions">
+
+<a href="{{ url_for('tenant.edit_list', list_id=list.id) }}">
+Edit List
+</a>
+
+|
+
+<a href="{{ url_for('tenant.delete_list', list_id=list.id) }}"
+onclick="return confirm('Delete this list and all candidates?')">
+Delete List
+</a>
+
+</div>
+
+<br>
+
+<!-- ADD CANDIDATE -->
+<form method="POST" action="{{ url_for('tenant.add_candidate_to_list', list_id=list.id) }}">
+
+<input type="text" name="name" placeholder="Candidate name" required>
+
+<input type="text" name="party_name" placeholder="Party name" required>
+
+<button type="submit">Add Candidate</button>
+
+</form>
+
+<br>
+
+<!-- CANDIDATES TABLE -->
+<table>
+
+<tr>
+<th>Name</th>
+<th>Party</th>
+<th>Actions</th>
+</tr>
+
+{% for candidate in list.candidates %}
+
+<tr>
+
+<td>{{ candidate.name }}</td>
+<td>{{ candidate.party_name }}</td>
+
+<td>
+
+<a href="{{ url_for('tenant.edit_candidate', candidate_id=candidate.id) }}">
+Edit
+</a>
+
+|
+
+<a href="{{ url_for('tenant.delete_candidate', candidate_id=candidate.id) }}"
+onclick="return confirm('Delete candidate?')">
+Delete
+</a>
+
+|
+
+<!-- MOVE CANDIDATE -->
+<form method="POST" action="{{ url_for('tenant.move_candidate', candidate_id=candidate.id) }}" style="display:inline;">
+
+<select name="new_list_id">
+
+{% for l in lists %}
+<option value="{{ l.id }}">{{ l.name }}</option>
+{% endfor %}
+
+</select>
+
+<button type="submit">Move</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+<br><br>
+
+{% endfor %}
+
+<a href="{{ url_for('tenant.dashboard') }}" class="back-link">
+Back to Dashboard
+</a>
+
+</div>
+
+</body>
+</html>
