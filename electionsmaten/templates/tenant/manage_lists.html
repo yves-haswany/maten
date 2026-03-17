@@ -43,18 +43,12 @@ Delete List
 
 <br>
 
-<!-- ADD CANDIDATE -->
-<form method="POST" action="{{ url_for('tenant.add_candidate_to_list', list_id=list.id) }}">
+<!-- ✅ ADD CANDIDATE BUTTON (UPDATED) -->
+<a href="{{ url_for('tenant.add_candidate', list_id=list.id) }}" class="create-button">
++ Add Candidate
+</a>
 
-<input type="text" name="name" placeholder="Candidate name" required>
-
-<input type="text" name="party_name" placeholder="Party name" required>
-
-<button type="submit">Add Candidate</button>
-
-</form>
-
-<br>
+<br><br>
 
 <!-- CANDIDATES TABLE -->
 <table>

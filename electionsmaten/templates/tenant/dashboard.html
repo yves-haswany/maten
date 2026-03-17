@@ -29,7 +29,7 @@ Logout
 <p>Create a new election list for one of your districts</p>
 </a>
 
-<a href="{{ url_for('tenant.view_lists') }}" class="dashboard-card">
+{#<a href="{{ url_for('tenant.view_lists') }}" class="dashboard-card">
 <h2>Manage Candidate Lists</h2>
 <p>View, edit, or delete your lists</p>
 </a>
@@ -44,10 +44,14 @@ Logout
 <p>View, edit, or delete candidates</p>
 </a>
 
-{#<a href="{{ url_for('tenant.download_results') }}" class="dashboard-card">
+<a href="{{ url_for('tenant.download_results') }}" class="dashboard-card">
 <h2>Export Results</h2>
 <p>Download voting results as a CSV file</p>
 </a>#}
+<a href="{{ url_for('tenant.manage_lists') }}" class="dashboard-card">
+<h2>Manage Lists & Candidates</h2>
+<p>Manage lists and their candidates in one place</p>
+</a>
 
 </div>
 

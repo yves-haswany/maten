@@ -176,7 +176,7 @@ def delete_list(list_id):
 # ADD CANDIDATE (INLINE)
 # -----------------------
 
-@tenant_bp.route("/add-candidate/<int:list_id>", methods=["POST"])
+@tenant_bp.route("/add-candidate/<int:list_id>", methods=["GET","POST"])
 def add_candidate(list_id):
 
     if "tenant_id" not in session:
