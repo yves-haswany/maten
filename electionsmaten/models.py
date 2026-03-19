@@ -215,16 +215,16 @@ class Elector(db.Model):
         db.ForeignKey("district.id"),
         nullable=False
     )
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenant.id"), nullable=False
+    )
 
     submitted_at = db.Column(
         db.DateTime,
         default=datetime.utcnow
     )
 
-    has_voted = db.Column(
-        db.Boolean,
-        default=False
-    )
+    
 
 
 # ---------------------------

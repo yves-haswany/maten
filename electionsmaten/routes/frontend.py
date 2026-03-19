@@ -69,17 +69,22 @@ def dashboard():
 # ENTER ELECTOR PAGE
 # ----------------------------
 
-@frontend_bp.route("/electors")
-def electors():
-
+@frontend_bp.route("/enter-electors", methods=["GET", "POST"])
+def enter_electors():
     if not is_logged_in():
         return redirect(url_for("frontend_bp.login"))
 
-    electors = Elector.query.filter_by(
-        district_id=session["district_id"]
-    ).all()
+    if request.method == "POST":
+        # Example: form submits a list of elector IDs
+        elector_ids = request.form.get("elector_ids").split(",")
+        timestamp = datetime.now()
+        for eid in elector_ids:
+            new_elector = Elector(id=eid.strip(), submitted_at=timestamp)
+            db.session.add(new_elector)
+        db.session.commit()
+        return redirect(url_for("frontend_bp.list_electors"))
 
-    return render_template("frontend/view_electors.html", electors=electors)
+    return render_template("frontend/enter_electors.html")
 
 
 # ----------------------------
@@ -96,13 +101,13 @@ def submit_elector():
 
     if not elector_id:
         flash("Elector ID required")
-        return redirect(url_for("frontend_bp.electors"))
+        return redirect(url_for("frontend_bp.enter_electors"))
 
     existing = Elector.query.filter_by(elector_id=elector_id).first()
 
     if existing:
         flash("Elector already registered")
-        return redirect(url_for("frontend_bp.electors"))
+        return redirect(url_for("frontend_bp.enter_electors"))
 
     new_elector = Elector(
         elector_id=elector_id,
@@ -115,8 +120,14 @@ def submit_elector():
 
     flash("Elector registered successfully")
 
-    return redirect(url_for("frontend_bp.electors"))
+    return render_template("frontend/enter_electors.html")
+@frontend_bp.route("/view-electors")
+def view_electors():
+    if not is_logged_in():
+        return redirect(url_for("frontend_bp.login"))
 
+    electors = Elector.query.order_by(Elector.submitted_at.desc()).all()
+    return render_template("frontend/view_electors.html", electors=electors)
 
 # ----------------------------
 # CAST VOTE PAGE
