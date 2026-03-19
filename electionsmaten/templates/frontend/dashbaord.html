@@ -1,23 +1,23 @@
-{% extends "shared/base.html" %}
+<h2>Dashboard</h2>
 
-{% block content %}
-
-<h2>Available Elections</h2>
-
-<ul>
-
-{% for election in elections %}
-
-<li>
-<a href="/vote/election/{{ election.id }}">
-{{ election.name }}
+<a href="{{ url_for('frontend_bp.electors') }}">
+    Enter Electors
 </a>
-</li>
 
-{% endfor %}
+<br><br>
 
-</ul>
+<a href="{{ url_for('frontend_bp.cast_vote') }}">
+    Cast Vote
+</a>
 
-<a href="/vote/logout">Logout</a>
+<br><br>
 
-{% endblock %}
+<a href="{{ url_for('frontend_bp.electors') }}">
+    View Electors
+</a>
+
+<br><br>
+
+<a href="{{ url_for('frontend_bp.logout') }}">
+    Logout
+</a>

@@ -1,0 +1,19 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<h2>Enter Elector ID</h2>
+
+<form method="POST" action="{{ url_for('frontend_bp.submit_elector') }}">
+
+    <input type="text" name="elector_id" placeholder="Enter Elector ID" required>
+    <button type="submit">Add</button>
+
+</form>
+
+<br>
+
+<!-- ✅ Back to dashboard -->
+<a href="{{ url_for('frontend_bp.dashboard') }}">← Back to Dashboard</a>
+
+{% endblock %}

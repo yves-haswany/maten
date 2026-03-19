@@ -2,27 +2,158 @@
 
 {% block content %}
 
-<h2>Vote</h2>
+<form id="vote-form">
 
-<form method="POST" action="/vote/cast_vote">
+<div class="container">
 
-<input type="hidden" name="election_id" value="{{ election_id }}">
+    <h2>Vote</h2>
 
-{% for candidate in candidates %}
+    <!-- LISTS -->
+    <div>
+        <h3>Select a List</h3>
+        <table>
+            <tr>
+                <th>List</th>
+                <th>Select</th>
+            </tr>
 
-<div>
+            {% for list in lists %}
+            <tr>
+                <td>{{ list.name }}</td>
+                <td>
+                    <input type="radio" name="list_id" class="list-radio" value="{{ list.id }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
 
-<label>
-<input type="radio" name="candidate_id" value="{{ candidate.id }}">
-{{ candidate.name }}
-</label>
+    <br>
+
+    <!-- CANDIDATES -->
+    <div>
+        <h3>Candidates</h3>
+        <table id="candidate-table">
+            <tr>
+                <td colspan="3">Select a list first</td>
+            </tr>
+        </table>
+    </div>
+
+    <br>
+
+    <button type="submit">Submit Vote</button>
+
+    <br><br>
+    <a href="{{ url_for('frontend_bp.dashboard') }}">Back to Dashboard</a>
 
 </div>
 
-{% endfor %}
-
-<button type="submit">Submit Vote</button>
-
 </form>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const voteForm = document.getElementById("vote-form");
+    const candidateTable = document.getElementById("candidate-table");
+
+    // ----------------------------
+    // LOAD CANDIDATES
+    // ----------------------------
+    document.querySelectorAll(".list-radio").forEach(radio => {
+        radio.addEventListener("change", () => {
+
+            // Clear selected candidate when switching list
+            const existingCandidate = document.querySelector("input[name='candidate_id']:checked");
+            if (existingCandidate) existingCandidate.checked = false;
+
+            fetch(`/get-candidates/${radio.value}`)
+            .then(res => res.json())
+            .then(data => {
+
+                let html = `
+                    <tr>
+                        <th>Name</th>
+                        <th>Party</th>
+                        <th>Select</th>
+                    </tr>
+                `;
+
+                if (!data.candidates.length) {
+                    html += `<tr><td colspan="3">No candidates available</td></tr>`;
+                } else {
+                    data.candidates.forEach(c => {
+                        html += `
+                            <tr>
+                                <td>${c.name}</td>
+                                <td>${c.party}</td>
+                                <td>
+                                    <input type="radio" name="candidate_id" value="${c.candidate_id}">
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                candidateTable.innerHTML = html;
+            })
+            .catch(err => {
+                console.error(err);
+                candidateTable.innerHTML = "<tr><td colspan='3'>Error loading candidates</td></tr>";
+            });
+        });
+    });
+
+    // ----------------------------
+    // SUBMIT VOTE
+    // ----------------------------
+    voteForm.addEventListener("submit", e => {
+        e.preventDefault();
+
+        const formData = new FormData(voteForm);
+
+        const listSelected = formData.get("list_id");
+        const candidateSelected = formData.get("candidate_id");
+
+        // ✅ RULE: candidate cannot exist without list
+        if (!listSelected && candidateSelected) {
+            alert("You must select a list before choosing a candidate.");
+            return;
+        }
+
+        // ✅ Blank vote allowed (no list, no candidate)
+
+        fetch("/submit-vote", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            alert("Vote submitted successfully!");
+
+            // Reset form
+            voteForm.reset();
+
+            // Reset candidate table
+            candidateTable.innerHTML = `
+                <tr>
+                    <td colspan="3">Select a list first</td>
+                </tr>
+            `;
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error submitting vote");
+        });
+    });
+
+});
+</script>
 
 {% endblock %}

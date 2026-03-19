@@ -187,17 +187,14 @@ def add_candidate(list_id):
     if request.method == "POST":
 
         name = request.form.get("name")
-        party_id = request.form.get("party_id")
+        
 
         # 🔒 Validate party belongs to list
-        if int(party_id) not in [p.id for p in candidate_list.parties]:
-            flash("Invalid party for this list", "danger")
-            return redirect(url_for("tenant.manage_lists"))
+        
 
         candidate = Candidate(
             name=name,
-            candidate_list_id=list_id,
-            party_id=party_id
+            candidate_list_id=list_id
         )
 
         db.session.add(candidate)

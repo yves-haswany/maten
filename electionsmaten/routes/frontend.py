@@ -1,10 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, send_file, flash
-from werkzeug.security import check_password_hash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from datetime import datetime
-from io import BytesIO
 
 from .. import db
-from ..models import User, Elector, Candidate, CandidateList, Vote, BallotPen
+from ..models import Elector, Candidate, CandidateList, Vote, BallotPen
 
 frontend_bp = Blueprint("frontend_bp", __name__)
 
@@ -14,17 +12,11 @@ frontend_bp = Blueprint("frontend_bp", __name__)
 # ----------------------------
 
 def is_logged_in():
-    return session.get("role") == "user"
-
-
-def current_user():
-    if not is_logged_in():
-        return None
-    return User.query.get(session["user_id"])
+    return session.get("role") == "ballot_pen"
 
 
 # ----------------------------
-# USER LOGIN (Voting Operator)
+# LOGIN (Ballot Pen ONLY)
 # ----------------------------
 
 @frontend_bp.route("/", methods=["GET", "POST"])
@@ -34,33 +26,20 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
-        user = User.query.filter_by(username=username, is_admin=False).first()
+        pen = BallotPen.query.filter_by(username=username).first()
 
-        if not user or not check_password_hash(user.password, password):
-            return render_template("LoginPage.html", error="Invalid credentials")
-
-        # user must belong to a party
-        if not user.party_id:
-            return render_template("LoginPage.html", error="Not a valid voting operator")
-
-        # check ballot pen assignment
-        pen = BallotPen.query.filter_by(user_id=user.id).first()
-
-        if not pen:
-            return render_template("LoginPage.html", error="No ballot pen assigned")
+        if not pen or pen.password != password:
+            return render_template("frontend/login.html", error="Invalid credentials")
 
         session.clear()
 
-        session["user_id"] = user.id
-        session["party_id"] = user.party_id
-        session["district_id"] = user.district_id
         session["ballot_pen_id"] = pen.id
-        session["role"] = "user"
-        session["last_activity"] = datetime.utcnow().timestamp()
+        session["district_id"] = pen.district_id
+        session["role"] = "ballot_pen"
 
         return redirect(url_for("frontend_bp.dashboard"))
 
-    return render_template("LoginPage.html")
+    return render_template("frontend/login.html")
 
 
 # ----------------------------
@@ -83,52 +62,51 @@ def dashboard():
     if not is_logged_in():
         return redirect(url_for("frontend_bp.login"))
 
-    return render_template("dashboard.html")
+    return render_template("frontend/dashboard.html")
 
 
 # ----------------------------
-# ELECTOR REGISTRATION
+# ENTER ELECTOR PAGE
 # ----------------------------
 
-@frontend_bp.route("/index")
-def index():
+@frontend_bp.route("/electors")
+def electors():
 
     if not is_logged_in():
-        return redirect(url_for("frontend.login"))
+        return redirect(url_for("frontend_bp.login"))
 
-    user = current_user()
+    electors = Elector.query.filter_by(
+        district_id=session["district_id"]
+    ).all()
 
-    electors = Elector.query.filter_by(district_id=user.district_id).all()
-
-    return render_template("index.html", electors=electors)
+    return render_template("frontend/view_electors.html", electors=electors)
 
 
 # ----------------------------
 # SUBMIT ELECTOR
 # ----------------------------
 
-@frontend_bp.route("/submit", methods=["POST"])
+@frontend_bp.route("/submit-elector", methods=["POST"])
 def submit_elector():
 
     if not is_logged_in():
-        return redirect(url_for("frontend.login"))
+        return redirect(url_for("frontend_bp.login"))
 
-    user = current_user()
     elector_id = request.form.get("elector_id")
 
     if not elector_id:
         flash("Elector ID required")
-        return redirect(url_for("frontend.index"))
+        return redirect(url_for("frontend_bp.electors"))
 
-    elector = Elector.query.filter_by(elector_id=elector_id).first()
+    existing = Elector.query.filter_by(elector_id=elector_id).first()
 
-    if elector:
+    if existing:
         flash("Elector already registered")
-        return redirect(url_for("frontend.index"))
+        return redirect(url_for("frontend_bp.electors"))
 
     new_elector = Elector(
         elector_id=elector_id,
-        district_id=user.district_id,
+        district_id=session["district_id"],
         submitted_at=datetime.utcnow()
     )
 
@@ -137,7 +115,7 @@ def submit_elector():
 
     flash("Elector registered successfully")
 
-    return redirect(url_for("frontend.index"))
+    return redirect(url_for("frontend_bp.electors"))
 
 
 # ----------------------------
@@ -148,28 +126,33 @@ def submit_elector():
 def cast_vote():
 
     if not is_logged_in():
-        return redirect(url_for("frontend.login"))
+        return redirect(url_for("frontend_bp.login"))
 
-    lists = CandidateList.query.all()
+    # Only lists in the same district
+    lists = CandidateList.query.filter_by(
+        district_id=session["district_id"]
+    ).all()
 
-    return render_template("vote.html", lists=lists)
+    return render_template("frontend/vote.html", lists=lists)
 
 
 # ----------------------------
-# GET CANDIDATES
+# GET CANDIDATES (AJAX)
 # ----------------------------
 
 @frontend_bp.route("/get-candidates/<int:list_id>")
 def get_candidates(list_id):
 
-    candidates = Candidate.query.filter_by(candidate_list_id=list_id).all()
+    candidates = Candidate.query.filter_by(
+        candidate_list_id=list_id
+    ).all()
 
     return {
         "candidates": [
             {
-                "id": c.id,
+                "candidate_id": c.id,
                 "name": c.name,
-                "party": c.party
+                "party": c.party.name if c.party else "No Party"
             }
             for c in candidates
         ]
@@ -190,17 +173,21 @@ def submit_vote():
     list_id = request.form.get("list_id")
     candidate_id = request.form.get("candidate_id")
 
-    elector = Elector.query.filter_by(elector_id=elector_id).first()
+    if not elector_id:
+        return {"error": "Elector ID required"}
+
+    elector = Elector.query.filter_by(
+        elector_id=elector_id,
+        district_id=session["district_id"]
+    ).first()
 
     if not elector:
-        return {"error": "Elector not found"}, 404
+        return {"error": "Elector not found"}
 
     if elector.has_voted:
-        return {"error": "Elector already voted"}, 400
+        return {"error": "Elector already voted"}
 
     vote = Vote(
-        elector_id=elector.id,
-        election_id=1,  # current election
         list_id=list_id,
         candidate_id=candidate_id,
         ballot_pen_id=session["ballot_pen_id"]
@@ -222,13 +209,15 @@ def submit_vote():
 def sorted_votes():
 
     if not is_logged_in():
-        return redirect(url_for("frontend.login"))
+        return redirect(url_for("frontend_bp.login"))
 
-    lists = CandidateList.query.all()
+    lists = CandidateList.query.filter_by(
+        district_id=session["district_id"]
+    ).all()
+
     candidates = Candidate.query.all()
 
     lists_data = []
-
     for l in lists:
         votes = Vote.query.filter_by(list_id=l.id).count()
 
@@ -239,7 +228,6 @@ def sorted_votes():
         })
 
     candidates_data = []
-
     for c in candidates:
         votes = Vote.query.filter_by(candidate_id=c.id).count()
 
@@ -254,7 +242,7 @@ def sorted_votes():
     candidates_data.sort(key=lambda x: x["votes"], reverse=True)
 
     return render_template(
-        "sorted_votes.html",
+        "frontend/sorted_votes.html",
         lists=lists_data,
         candidates=candidates_data
     )
