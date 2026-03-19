@@ -169,37 +169,57 @@ def submit_vote():
     if not is_logged_in():
         return {"error": "Not authorized"}, 401
 
-    elector_id = request.form.get("elector_id")
     list_id = request.form.get("list_id")
     candidate_id = request.form.get("candidate_id")
 
-    if not elector_id:
-        return {"error": "Elector ID required"}
+    ballot_pen_id = session["ballot_pen_id"]
+    district_id = session["district_id"]
 
-    elector = Elector.query.filter_by(
-        elector_id=elector_id,
-        district_id=session["district_id"]
-    ).first()
+    # ----------------------------
+    # COUNT ELECTORS (LIMIT)
+    # ----------------------------
+    elector_count = Elector.query.filter_by(
+        district_id=district_id
+    ).count()
 
-    if not elector:
-        return {"error": "Elector not found"}
+    # ----------------------------
+    # COUNT CURRENT VOTES
+    # ----------------------------
+    vote_count = Vote.query.filter_by(
+        ballot_pen_id=ballot_pen_id
+    ).count()
 
-    if elector.has_voted:
-        return {"error": "Elector already voted"}
+    if vote_count >= elector_count:
+        return {"error": "Maximum number of votes reached"}
+
+    # ----------------------------
+    # VALIDATION RULES
+    # ----------------------------
+
+    # ❌ candidate without list
+    if not list_id and candidate_id:
+        return {"error": "Select a list first"}
+
+    # ❌ candidate not in selected list
+    if list_id and candidate_id:
+        candidate = Candidate.query.get(candidate_id)
+        if not candidate or str(candidate.candidate_list_id) != list_id:
+            return {"error": "Invalid candidate selection"}
+
+    # ----------------------------
+    # CREATE VOTE (can be blank)
+    # ----------------------------
 
     vote = Vote(
-        list_id=list_id,
-        candidate_id=candidate_id,
-        ballot_pen_id=session["ballot_pen_id"]
+        list_id=list_id if list_id else None,
+        candidate_id=candidate_id if candidate_id else None,
+        ballot_pen_id=ballot_pen_id
     )
-
-    elector.has_voted = True
 
     db.session.add(vote)
     db.session.commit()
 
     return {"success": True}
-
 
 # ----------------------------
 # RESULTS VIEW
