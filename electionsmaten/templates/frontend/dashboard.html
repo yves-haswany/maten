@@ -1,23 +1,41 @@
-<h2>Dashboard</h2>
+{% extends "shared/base.html" %}
 
-<a href="{{ url_for('frontend_bp.electors') }}">
-    Enter Electors
-</a>
+{% block content %}
 
-<br><br>
+<div class="dashboard-container">
 
-<a href="{{ url_for('frontend_bp.cast_vote') }}">
-    Cast Vote
-</a>
+    <!-- HEADER -->
+    <div class="dashboard-header">
+        <div class="dashboard-title">Dashboard</div>
 
-<br><br>
+        <a href="{{ url_for('frontend_bp.logout') }}" class="logout-button">
+            Logout
+        </a>
+    </div>
 
-<a href="{{ url_for('frontend_bp.electors') }}">
-    View Electors
-</a>
+    <!-- GRID -->
+    <div class="dashboard-grid">
 
-<br><br>
+        <!-- Enter Electors -->
+        <a href="{{ url_for('frontend_bp.electors') }}" class="dashboard-card">
+            <h2>Enter Electors</h2>
+            <p>Add elector IDs before voting</p>
+        </a>
 
-<a href="{{ url_for('frontend_bp.logout') }}">
-    Logout
-</a>
+        <!-- View Electors -->
+        <a href="{{ url_for('frontend_bp.view_electors') }}" class="dashboard-card">
+            <h2>View Electors</h2>
+            <p>See submitted elector IDs</p>
+        </a>
+
+        <!-- Cast Vote -->
+        <a href="{{ url_for('frontend_bp.cast_vote') }}" class="dashboard-card">
+            <h2>Cast Vote</h2>
+            <p>Submit votes securely</p>
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

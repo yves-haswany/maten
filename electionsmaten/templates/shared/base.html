@@ -1,19 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{% block title %}Election System{% endblock %}</title>
-</head>
+    <meta charset="UTF-8">
+    <title>Election System</title>
 
+    <!-- ✅ LINK YOUR CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
 <body>
 
-<h1>Election Management System</h1>
-
-{% include "shared/messages.html" %}
-
-<hr>
-
-{% block content %}
-{% endblock %}
+    {% block content %}{% endblock %}
 
 </body>
 </html>

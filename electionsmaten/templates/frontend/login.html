@@ -2,24 +2,24 @@
 
 {% block content %}
 
-<h2>Voting Operator Login</h2>
+<div class="login-container">
 
-<form method="POST">
+    <h2>Voting Operator Login</h2>
 
-<input name="username" placeholder="Username">
+    {% if error %}
+        <div class="error-message">{{ error }}</div>
+    {% endif %}
 
-<input type="password" name="password" placeholder="Password">
+    <form method="POST">
 
-<select name="pen_id">
+        <input type="text" name="username" placeholder="Username" required>
 
-{% for pen in pens %}
-<option value="{{ pen.id }}">{{ pen.name }}</option>
-{% endfor %}
+        <input type="password" name="password" placeholder="Password" required>
 
-</select>
+        <button type="submit">Login</button>
 
-<button type="submit">Login</button>
+    </form>
 
-</form>
+</div>
 
 {% endblock %}
