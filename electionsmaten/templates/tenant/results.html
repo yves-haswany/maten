@@ -1,7 +1,7 @@
 {% for district_id, rows in results.items() %}
     <h2>District {{ district_id }}</h2>
 
-    <a href="{{ url_for('frontend_bp.download_results', district_id=district_id) }}">
+    <a href="{{ url_for('tenant.download_results', district_id=district_id) }}">
         Download CSV
     </a>
 

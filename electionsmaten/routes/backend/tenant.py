@@ -286,11 +286,12 @@ def move_candidate(candidate_id):
     return redirect(url_for("tenant.manage_lists"))
 @tenant_bp.route("/results")
 def tenant_results():
-
-    if session.get("role") != "tenant":
-        return redirect(url_for("frontend_bp.login"))
-
     tenant_id = session["tenant_id"]
+    session['role'] = 'tenant'
+    if session.get("role") != "tenant":
+        return redirect(url_for("tenant.login"))
+
+   
 
     # Get districts for this tenant
     tenant = Tenant.query.get(tenant_id)
@@ -346,9 +347,10 @@ def tenant_results():
 def download_results(district_id):
 
     if session.get("role") != "tenant":
-        return redirect(url_for("frontend_bp.login"))
+        return redirect(url_for("tenant.login"))
 
     tenant_id = session["tenant_id"]
+    session['role'] = 'tenant'
 
     rows = db.session.query(
         Elector.tenant_id,
@@ -404,5 +406,103 @@ def download_results(district_id):
         mimetype="text/csv",
         headers={
             "Content-Disposition": f"attachment;filename=results_district_{district_id}.csv"
+        }
+    )
+@tenant_bp.route("/electors")
+def view_electors():
+    """View all electors for this tenant grouped by district"""
+    tenant_id = session.get("tenant_id")
+    role = session.get("role")
+
+    if not tenant_id or role != "tenant":
+        return redirect(url_for("tenant.login"))
+
+    tenant = Tenant.query.get(tenant_id)
+    districts = tenant.districts
+
+    electors_by_district = {}
+
+    for district in districts:
+        electors = db.session.query(
+            Elector.id,
+            Elector.elector_id,
+            Elector.timestamp,
+            BallotPen.username
+        ) \
+        .join(BallotPen, BallotPen.id == Elector.ballot_pen_id) \
+        .filter(Elector.tenant_id == tenant_id) \
+        .filter(Elector.district_id == district.id) \
+        .all()
+
+        formatted = []
+        for e in electors:
+            ballot_pen_number = e.username[-4:] if e.username else "N/A"
+            formatted.append({
+                "elector_id": e.elector_id,
+                "timestamp": e.timestamp.strftime("%H:%M"),
+                "ballot_pen": ballot_pen_number
+            })
+
+        electors_by_district[district.id] = formatted
+
+    return render_template(
+        "tenant/electors.html",
+        electors=electors_by_district
+    )
+
+
+@tenant_bp.route("/electors/download/<int:district_id>")
+def download_electors(district_id):
+    """Download electors CSV for a district"""
+    tenant_id = session.get("tenant_id")
+    role = session.get("role")
+
+    if not tenant_id or role != "tenant":
+        return redirect(url_for("tenant.login"))
+
+    electors = db.session.query(
+        Elector.tenant_id,
+        Elector.district_id,
+        BallotPen.username,
+        Elector.elector_id,
+        Elector.timestamp
+    ) \
+    .join(BallotPen, BallotPen.id == Elector.ballot_pen_id) \
+    .filter(Elector.tenant_id == tenant_id) \
+    .filter(Elector.district_id == district_id) \
+    .all()
+
+    # Create CSV
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow([
+        "tenant_id",
+        "district_id",
+        "ballot_pen_number",
+        "elector_id",
+        "timestamp"
+    ])
+
+    # Rows
+    for e in electors:
+        ballot_pen_number = e.username[-4:] if e.username else "N/A"
+        timestamp_hm = e.timestamp.strftime("%H:%M") if e.timestamp else "N/A"
+        writer.writerow([
+            e.tenant_id,
+            e.district_id,
+            ballot_pen_number,
+            e.elector_id,
+            timestamp_hm
+        ])
+
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment;filename=electors_district_{district_id}.csv"
         }
     )
