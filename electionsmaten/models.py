@@ -218,6 +218,8 @@ class Elector(db.Model):
         db.DateTime,
         default=datetime.utcnow
     )
+    ballot_pen_id = db.Column(db.Integer, db.ForeignKey("ballot_pen.id"), nullable=False)  # <-- new
+
 
     
 

@@ -50,7 +50,7 @@ def logout():
 def dashboard():
 
     if "tenant_id" not in session:
-        return redirect(url_for("tenant.login"))
+        return redirect(url_for("tenant_bp.login"))
 
     tenant = Tenant.query.get(session["tenant_id"])
 
@@ -412,9 +412,9 @@ def download_results(district_id):
 def view_electors():
     """View all electors for this tenant grouped by district"""
     tenant_id = session.get("tenant_id")
-    role = session.get("role")
+    session['role'] = 'tenant'
 
-    if not tenant_id or role != "tenant":
+    if not tenant_id or session['role'] != "tenant":
         return redirect(url_for("tenant.login"))
 
     tenant = Tenant.query.get(tenant_id)
@@ -426,20 +426,16 @@ def view_electors():
         electors = db.session.query(
             Elector.id,
             Elector.elector_id,
-            Elector.timestamp,
+            Elector.submitted_at,
             BallotPen.username
-        ) \
-        .join(BallotPen, BallotPen.id == Elector.ballot_pen_id) \
-        .filter(Elector.tenant_id == tenant_id) \
-        .filter(Elector.district_id == district.id) \
-        .all()
+        ) .join(BallotPen, BallotPen.id == Elector.ballot_pen_id) .filter(Elector.tenant_id == tenant_id) .filter(Elector.district_id == district.id) .all()
 
         formatted = []
         for e in electors:
             ballot_pen_number = e.username[-4:] if e.username else "N/A"
             formatted.append({
                 "elector_id": e.elector_id,
-                "timestamp": e.timestamp.strftime("%H:%M"),
+                "timestamp": e.submitted_at.strftime("%H:%M"),
                 "ballot_pen": ballot_pen_number
             })
 
@@ -455,9 +451,9 @@ def view_electors():
 def download_electors(district_id):
     """Download electors CSV for a district"""
     tenant_id = session.get("tenant_id")
-    role = session.get("role")
+    session['role'] = 'tenant'
 
-    if not tenant_id or role != "tenant":
+    if not tenant_id or session['role'] != "tenant":
         return redirect(url_for("tenant.login"))
 
     electors = db.session.query(
