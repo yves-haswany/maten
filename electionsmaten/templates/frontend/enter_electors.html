@@ -3,13 +3,13 @@
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-<div class="container">
+<div class="form-container">
     <h2>Enter Elector ID</h2>
-    <form method="POST" class="elector-form">
-        <input type="text" name="elector_ids" placeholder="Enter Elector ID" required>
+    <form method="POST" class="elector-form" action="{{ url_for('frontend_bp.submit_elector') }}">
+        <input type="text" name="elector_id" placeholder="Enter Elector ID" required>
         <div class="form-buttons">
             <button type="submit" class="btn btn-submit">Add</button>
-            <button type="button" class="btn btn-cancel" onclick="document.querySelector('[name=elector_ids]').value=''">Cancel</button>
+            <button type="button" class="btn btn-cancel" onclick="document.querySelector('[name=elector_id]').value=''">Cancel</button>
         </div>
     </form>
     <a href="{{ url_for('frontend_bp.dashboard') }}" class="btn btn-back">← Back to Dashboard</a>

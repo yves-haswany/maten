@@ -91,6 +91,7 @@ a {
     border: 1px solid #ccc;
     border-radius: 6px;
 }
+
 .form-container select {
     width: 100%;
     padding: 10px;
@@ -99,6 +100,8 @@ a {
     border: 1px solid #ccc;
     border-radius: 6px;
 }
+
+/* 🔥 FIXED BUTTON SPACING */
 .form-container button {
     width: 100%;
     padding: 10px;
@@ -107,10 +110,37 @@ a {
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 .form-container button:hover {
     background: #1e4e8c;
+}
+
+/* ✅ NEW: BUTTON GROUP (SIDE BY SIDE) */
+.button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.button-group button {
+    flex: 1;
+    width: auto; /* override 100% */
+}
+
+/* Optional: color distinction */
+.button-group button:first-child {
+    background: #2b6cb0; /* Add */
+}
+
+.button-group button:last-child {
+    background: #e53e3e; /* Cancel */
+}
+
+.button-group button:last-child:hover {
+    background: #c53030;
 }
 
 .back-link {
@@ -212,6 +242,11 @@ a {
 .logout-button:hover {
     background-color: #dc2626;
 }
+
+/* ===============================
+   CHECKBOX GROUP
+================================ */
+
 .checkbox-group {
     display: flex;
     flex-direction: column;

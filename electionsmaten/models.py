@@ -108,18 +108,14 @@ class Candidate(db.Model):
         nullable=False
     )
 
-    party_id = db.Column(
-        db.Integer,
-        db.ForeignKey("party.id"),
-        nullable=False
-    )
+    
 
     votes = db.relationship(
         "Vote",
         backref="candidate",
         lazy=True
     )
-    party = db.relationship("Party")
+ 
 
 
 # ---------------------------
@@ -201,12 +197,11 @@ class Vote(db.Model):
 # ---------------------------
 
 class Elector(db.Model):
-
+    __tablename__ = "elector"
     id = db.Column(db.Integer, primary_key=True)
 
     elector_id = db.Column(
         db.String(120),
-        unique=True,
         nullable=False
     )
 

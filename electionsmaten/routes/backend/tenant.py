@@ -2,8 +2,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash
 
 from ... import db
-from ...models import CandidateList, Candidate, District, Tenant
-
+from ...models import CandidateList, Candidate, District, Tenant, Vote, Elector, BallotPen
+import csv
+from io import StringIO
+from flask import Response
 tenant_bp = Blueprint("tenant", __name__, url_prefix="/tenant")
 
 
@@ -282,3 +284,125 @@ def move_candidate(candidate_id):
     db.session.commit()
 
     return redirect(url_for("tenant.manage_lists"))
+@tenant_bp.route("/results")
+def tenant_results():
+
+    if session.get("role") != "tenant":
+        return redirect(url_for("frontend_bp.login"))
+
+    tenant_id = session["tenant_id"]
+
+    # Get districts for this tenant
+    tenant = Tenant.query.get(tenant_id)
+    districts = tenant.districts
+
+    results_by_district = {}
+
+    for district in districts:
+
+        rows = db.session.query(
+            Elector.tenant_id,
+            Elector.district_id,
+            BallotPen.username,
+            CandidateList.name.label("list_name"),
+            Candidate.name.label("candidate_name"),
+            db.func.count(Vote.id).label("votes")
+        ) \
+        .join(Vote, Vote.ballot_pen_id == BallotPen.id) \
+        .join(Candidate, Candidate.id == Vote.candidate_id, isouter=True) \
+        .join(CandidateList, CandidateList.id == Vote.list_id, isouter=True) \
+        .join(Elector, Elector.district_id == BallotPen.district_id) \
+        .filter(Elector.tenant_id == tenant_id) \
+        .filter(Elector.district_id == district.id) \
+        .group_by(
+            Elector.tenant_id,
+            Elector.district_id,
+            BallotPen.username,
+            CandidateList.name,
+            Candidate.name
+        ).all()
+
+        formatted_rows = []
+
+        for r in rows:
+            ballot_pen_number = r.username[-4:]  # last 4 digits
+
+            formatted_rows.append({
+                "tenant_id": r.tenant_id,
+                "district_id": r.district_id,
+                "ballot_pen": ballot_pen_number,
+                "list_name": r.list_name or "N/A",
+                "candidate_name": r.candidate_name or "N/A",
+                "votes": r.votes
+            })
+
+        results_by_district[district.id] = formatted_rows
+
+    return render_template(
+        "tenant/results.html",
+        results=results_by_district
+    )
+@tenant_bp.route("/tenant/results/download/<int:district_id>")
+def download_results(district_id):
+
+    if session.get("role") != "tenant":
+        return redirect(url_for("frontend_bp.login"))
+
+    tenant_id = session["tenant_id"]
+
+    rows = db.session.query(
+        Elector.tenant_id,
+        Elector.district_id,
+        BallotPen.username,
+        CandidateList.name.label("list_name"),
+        Candidate.name.label("candidate_name"),
+        db.func.count(Vote.id).label("votes")
+    ) \
+    .join(Vote, Vote.ballot_pen_id == BallotPen.id) \
+    .join(Candidate, Candidate.id == Vote.candidate_id, isouter=True) \
+    .join(CandidateList, CandidateList.id == Vote.list_id, isouter=True) \
+    .join(Elector, Elector.district_id == BallotPen.district_id) \
+    .filter(Elector.tenant_id == tenant_id) \
+    .filter(Elector.district_id == district_id) \
+    .group_by(
+        Elector.tenant_id,
+        Elector.district_id,
+        BallotPen.username,
+        CandidateList.name,
+        Candidate.name
+    ).all()
+
+    # Create CSV
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow([
+        "tenant_id",
+        "district_id",
+        "ballot_pen_number",
+        "list_name",
+        "candidate_name",
+        "votes"
+    ])
+
+    # Rows
+    for r in rows:
+        writer.writerow([
+            r.tenant_id,
+            r.district_id,
+            r.username[-4:],  # last 4 digits
+            r.list_name or "N/A",
+            r.candidate_name or "N/A",
+            r.votes
+        ])
+
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment;filename=results_district_{district_id}.csv"
+        }
+    )

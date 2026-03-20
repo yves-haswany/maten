@@ -1,0 +1,31 @@
+{% for district_id, rows in results.items() %}
+    <h2>District {{ district_id }}</h2>
+
+    <a href="{{ url_for('frontend_bp.download_results', district_id=district_id) }}">
+        Download CSV
+    </a>
+
+    <table border="1">
+        <tr>
+            <th>Tenant</th>
+            <th>District</th>
+            <th>Ballot Pen</th>
+            <th>List</th>
+            <th>Candidate</th>
+            <th>Votes</th>
+        </tr>
+
+        {% for r in rows %}
+        <tr>
+            <td>{{ r.tenant_id }}</td>
+            <td>{{ r.district_id }}</td>
+            <td>{{ r.ballot_pen }}</td>
+            <td>{{ r.list_name }}</td>
+            <td>{{ r.candidate_name }}</td>
+            <td>{{ r.votes }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <hr>
+{% endfor %}

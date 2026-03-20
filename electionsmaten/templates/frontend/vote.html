@@ -74,7 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 let html = `
                     <tr>
                         <th>Name</th>
-                        <th>Party</th>
                         <th>Select</th>
                     </tr>
                 `;
@@ -86,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         html += `
                             <tr>
                                 <td>${c.name}</td>
-                                <td>${c.party}</td>
+                               
                                 <td>
                                     <input type="radio" name="candidate_id" value="${c.candidate_id}">
                                 </td>
