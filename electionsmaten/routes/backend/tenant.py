@@ -125,7 +125,7 @@ def create_list():
         db.session.add(new_list)
         db.session.commit()
 
-        return redirect(url_for("tenant.manage_lists"))
+        return redirect(url_for("tenant.create_list"))
 
     return render_template(
         "tenant/create_candidate_list.html",
@@ -202,7 +202,7 @@ def add_candidate(list_id):
         db.session.add(candidate)
         db.session.commit()
 
-        return redirect(url_for("tenant.manage_lists"))
+        return redirect(url_for("tenant.add_candidate", list_id=list_id))
 
     return render_template("tenant/add_candidate.html", list=candidate_list)
 
@@ -284,6 +284,8 @@ def move_candidate(candidate_id):
     db.session.commit()
 
     return redirect(url_for("tenant.manage_lists"))
+from sqlalchemy import func, distinct
+
 @tenant_bp.route("/results")
 def tenant_results():
     tenant_id = session["tenant_id"]
@@ -291,9 +293,6 @@ def tenant_results():
     if session.get("role") != "tenant":
         return redirect(url_for("tenant.login"))
 
-   
-
-    # Get districts for this tenant
     tenant = Tenant.query.get(tenant_id)
     districts = tenant.districts
 
@@ -301,32 +300,34 @@ def tenant_results():
 
     for district in districts:
 
-        rows = db.session.query(
-            Elector.tenant_id,
-            Elector.district_id,
-            BallotPen.username,
-            CandidateList.name.label("list_name"),
-            Candidate.name.label("candidate_name"),
-            db.func.count(Vote.id).label("votes")
-        ) \
-        .join(Vote, Vote.ballot_pen_id == BallotPen.id) \
-        .join(Candidate, Candidate.id == Vote.candidate_id, isouter=True) \
-        .join(CandidateList, CandidateList.id == Vote.list_id, isouter=True) \
-        .join(Elector, Elector.district_id == BallotPen.district_id) \
-        .filter(Elector.tenant_id == tenant_id) \
-        .filter(Elector.district_id == district.id) \
-        .group_by(
-            Elector.tenant_id,
-            Elector.district_id,
-            BallotPen.username,
-            CandidateList.name,
-            Candidate.name
-        ).all()
+        # Aggregate votes per candidate
+        rows = (
+    db.session.query(
+        CandidateList.name.label("list_name"),
+        Candidate.name.label("candidate_name"),
+        BallotPen.username.label("username"),  #
+        Tenant.id.label("tenant_id"),  
+        BallotPen.district_id.label("district_id"), 
+        db.func.count(Vote.id).label("votes")
+    )
+    .select_from(Vote)
+    .join(Candidate, Candidate.id == Vote.candidate_id)
+    .join(CandidateList, CandidateList.id == Vote.list_id)
+    .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+    .filter(BallotPen.district_id == district.id)
+    .group_by(
+        CandidateList.name,
+        Candidate.name,
+        BallotPen.username,
+        Tenant.id
+    )
+    .all()
+)
 
         formatted_rows = []
 
         for r in rows:
-            ballot_pen_number = r.username[-4:]  # last 4 digits
+            ballot_pen_number = r.username[-4:] if r.username else "N/A"
 
             formatted_rows.append({
                 "tenant_id": r.tenant_id,
@@ -351,28 +352,31 @@ def download_results(district_id):
 
     tenant_id = session["tenant_id"]
     session['role'] = 'tenant'
+    tenant = Tenant.query.get(tenant_id)
+    districts = tenant.districts
 
-    rows = db.session.query(
-        Elector.tenant_id,
-        Elector.district_id,
-        BallotPen.username,
+    rows = (
+    db.session.query(
         CandidateList.name.label("list_name"),
         Candidate.name.label("candidate_name"),
+        BallotPen.username.label("username"),  #
+        Tenant.id.label("tenant_id"),  
+        BallotPen.district_id.label("district_id"), 
         db.func.count(Vote.id).label("votes")
-    ) \
-    .join(Vote, Vote.ballot_pen_id == BallotPen.id) \
-    .join(Candidate, Candidate.id == Vote.candidate_id, isouter=True) \
-    .join(CandidateList, CandidateList.id == Vote.list_id, isouter=True) \
-    .join(Elector, Elector.district_id == BallotPen.district_id) \
-    .filter(Elector.tenant_id == tenant_id) \
-    .filter(Elector.district_id == district_id) \
+    )
+    .select_from(Vote)
+    .join(Candidate, Candidate.id == Vote.candidate_id)
+    .join(CandidateList, CandidateList.id == Vote.list_id)
+    .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+    .filter(BallotPen.district_id == district_id)
     .group_by(
-        Elector.tenant_id,
-        Elector.district_id,
-        BallotPen.username,
         CandidateList.name,
-        Candidate.name
-    ).all()
+        Candidate.name,
+        BallotPen.username,
+        Tenant.id
+    )
+    .all()
+)
 
     # Create CSV
     output = StringIO()
@@ -461,7 +465,7 @@ def download_electors(district_id):
         Elector.district_id,
         BallotPen.username,
         Elector.elector_id,
-        Elector.timestamp
+        Elector.submitted_at.label("timestamp")
     ) \
     .join(BallotPen, BallotPen.id == Elector.ballot_pen_id) \
     .filter(Elector.tenant_id == tenant_id) \

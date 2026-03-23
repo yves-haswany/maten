@@ -1,51 +1,45 @@
-<!-- templates/tenant/electors.html -->
-{% extends "tenant/base.html" %}
-
-{% block title %}Electors{% endblock %}
+{% extends "shared/base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">Electors</h2>
+<h1>Electors by District</h1>
 
-    {% if electors %}
-        {% for district_id, district_electors in electors.items() %}
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>District ID: {{ district_id }}</span>
-                    <a href="{{ url_for('tenant.download_electors', district_id=district_id) }}" class="btn btn-sm btn-primary">
-                        Download CSV
-                    </a>
-                </div>
-                <div class="card-body p-0">
-                    {% if district_electors %}
-                        <table class="table table-striped mb-0">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Ballot Pen</th>
-                                    <th>Elector ID</th>
-                                    <th>Time Entered (HH:MM)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for idx, elector in enumerate(district_electors, 1) %}
-                                    <tr>
-                                        <td>{{ idx }}</td>
-                                        <td>{{ elector.ballot_pen }}</td>
-                                        <td>{{ elector.elector_id }}</td>
-                                        <td>{{ elector.timestamp }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    {% else %}
-                        <p class="p-3 mb-0">No electors have been entered in this district yet.</p>
-                    {% endif %}
-                </div>
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>No districts found for this tenant.</p>
-    {% endif %}
-</div>
+{% for district_id, district_electors in electors.items() %}
+    <div class="district-section">
+        <h2>
+            District {{ district_id }}
+            {# Add CSV download button #}
+            <a href="{{ url_for('tenant.download_electors', district_id=district_id) }}" 
+               class="btn btn-sm btn-primary" 
+               style="margin-left: 15px;">
+               Download CSV
+            </a>
+        </h2>
+
+        {% if district_electors %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Elector ID</th>
+                        <th>Ballot Pen</th>
+                        <th>Submitted At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for elector in district_electors %}
+                        <tr>
+                            <td>{{ loop.index }}</td>  {# 1-based numbering #}
+                            <td>{{ elector.elector_id }}</td>
+                            <td>{{ elector.ballot_pen[-4:] if elector.ballot_pen else 'N/A' }}</td>
+                            <td>{{ elector.timestamp }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No electors found for this district.</p>
+        {% endif %}
+    </div>
+{% endfor %}
+
 {% endblock %}

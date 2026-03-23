@@ -125,7 +125,8 @@ def submit_elector():
     elector_id=elector_id_input,
     tenant_id=session["tenant_id"],
     district_id=session["district_id"],
-    submitted_at=datetime.utcnow()
+    submitted_at=datetime.utcnow(),
+    ballot_pen_id=session.get("ballot_pen_id")
 )
 
     db.session.add(new_elector)
