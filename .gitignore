@@ -10,3 +10,4 @@ exports/
 .vscode/
 .idea/
 .env
+electionsmaten/instance/maten.db
