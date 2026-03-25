@@ -2,24 +2,29 @@
 
 {% block content %}
 
-<div class="login-container">
+<div class="page-wrapper">
 
-    <h2>Voting Operator Login</h2>
+    <div class="header-title">
+        الانتخابات النيابية لبنان 2028
+    </div>
 
-    {% if error %}
-        <div class="error-message">{{ error }}</div>
-    {% endif %}
+    <div class="login-container">
 
-    <form method="POST">
+        <h2>Voting Operator Login</h2>
 
-        <input type="text" name="username" placeholder="Username" required>
+        {% if error %}
+            <div class="error-message">{{ error }}</div>
+        {% endif %}
 
-        <input type="password" name="password" placeholder="Password" required>
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
 
-        <button type="submit">Login</button>
-
-    </form>
+    </div>
 
 </div>
+
 
 {% endblock %}

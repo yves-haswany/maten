@@ -17,8 +17,7 @@ def create_app():
     from . import  models  # Import models after db is initialized
 
     # Import models AFTER db is initialized
-    with app.app_context():
-        db.create_all()
+    
 
     # Blueprints
     from .routes.backend.admin import admin_bp

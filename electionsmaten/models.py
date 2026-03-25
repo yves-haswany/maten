@@ -38,7 +38,8 @@ class Party(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     name = db.Column(db.String(120), unique=True, nullable=False)
-    candidate_lists = db.relationship("CandidateList", secondary=candidate_list_party, back_populates="parties",overlaps="candidate_lists,party")
+
+    candidate_lists = db.relationship("CandidateList", secondary=candidate_list_party, backref="party", overlaps="parties.party")
 
 
 # ---------------------------
@@ -79,7 +80,9 @@ class CandidateList(db.Model):
 
     
 
+
     parties = db.relationship("Party", secondary=candidate_list_party, back_populates="candidate_lists",overlaps="candidate_lists,party")
+
 
     candidates = db.relationship(
         "Candidate",
