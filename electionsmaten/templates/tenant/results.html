@@ -7,13 +7,15 @@
     <th>Votes</th>
 </tr>
 
-{% for r in rows %}
-<tr>
-    <td>{{ r.tenant_id }}</td>
-    <td>{{ r.district_id }}</td>
-    <td>{{ r.ballot_pen }}</td>
-    <td>{{ r.list_name or "None" }}</td>
-    <td>{{ r.candidate_name or "None" }}</td>
-    <td>{{ r.votes }}</td>
-</tr>
+{% for district_id, rows in results.items() %}
+    {% for r in rows %}
+        <tr>
+            <td>{{ r.tenant_id }}</td>
+            <td>{{ r.district_id }}</td>
+            <td>{{ r.ballot_pen }}</td>
+            <td>{{ r.list_name or "None" }}</td>
+            <td>{{ r.candidate_name or "None" }}</td>
+            <td>{{ r.votes }}</td>
+        </tr>
+    {% endfor %}
 {% endfor %}
