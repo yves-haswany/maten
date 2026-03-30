@@ -300,65 +300,102 @@ def tenant_results():
 
     for district in districts:
 
-        # ✅ ALL candidates (even with 0 votes)
-        rows = (
+        formatted_rows = []
+
+        # ----------------------------
+        # 1. FULL VOTES (list + candidate)
+        # ----------------------------
+        full_votes = (
             db.session.query(
-                CandidateList.name.label("list_name"),
-                Candidate.name.label("candidate_name"),
-                db.func.count(Vote.id).label("votes")
+                CandidateList.name,
+                Candidate.name,
+                BallotPen.username,
+                BallotPen.district_id,
+                db.func.count(Vote.id)
             )
-            .select_from(CandidateList)
-            .outerjoin(Candidate, Candidate.candidate_list_id == CandidateList.id)
-            .outerjoin(
-                Vote,
-                (Vote.candidate_id == Candidate.id) |
-                (
-                    (Vote.candidate_id == None) &
-                    (Vote.list_id == CandidateList.id)
-                )
-            )
-            .outerjoin(BallotPen, BallotPen.id == Vote.ballot_pen_id)
-            .filter(
-                (BallotPen.district_id == district.id) | (BallotPen.id == None)
-            )
-            .group_by(CandidateList.name, Candidate.name)
+            .join(Candidate, Candidate.id == Vote.candidate_id)
+            .join(CandidateList, CandidateList.id == Vote.list_id)
+            .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+            .filter(BallotPen.district_id == district.id)
+            .group_by(CandidateList.name, Candidate.name, BallotPen.username, BallotPen.district_id)
             .all()
         )
 
-        formatted_rows = []
-
-        for r in rows:
+        for list_name, candidate_name, username, district_id, votes in full_votes:
             formatted_rows.append({
-                "list_name": r.list_name or "N/A",
-                "candidate_name": r.candidate_name or "No candidate",
-                "votes": r.votes
+                "tenant_id": tenant_id,
+                "district_id": district_id,
+                "ballot_pen": username[-4:],
+                "list_name": list_name,
+                "candidate_name": candidate_name,
+                "votes": votes
             })
 
-        # ✅ BLANK votes
+        # ----------------------------
+        # 2. LIST ONLY (no candidate)
+        # ----------------------------
+        list_only_votes = (
+            db.session.query(
+                CandidateList.name,
+                BallotPen.username,
+                BallotPen.district_id,
+                db.func.count(Vote.id)
+            )
+            .join(CandidateList, CandidateList.id == Vote.list_id)
+            .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+            .filter(
+                BallotPen.district_id == district.id,
+                Vote.candidate_id == None
+            )
+            .group_by(CandidateList.name, BallotPen.username, BallotPen.district_id)
+            .all()
+        )
+
+        for list_name, username, district_id, votes in list_only_votes:
+            formatted_rows.append({
+                "tenant_id": tenant_id,
+                "district_id": district_id,
+                "ballot_pen": username[-4:],
+                "list_name": list_name,
+                "candidate_name": "No candidate",
+                "votes": votes
+            })
+
+        # ----------------------------
+        # 3. BLANK VOTES
+        # ----------------------------
         blank_votes = (
-            db.session.query(db.func.count(Vote.id))
-            .join(BallotPen)
+            db.session.query(
+                BallotPen.username,
+                BallotPen.district_id,
+                db.func.count(Vote.id)
+            )
+            .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
             .filter(
                 BallotPen.district_id == district.id,
                 Vote.list_id == None,
                 Vote.candidate_id == None
             )
-            .scalar()
+            .group_by(BallotPen.username, BallotPen.district_id)
+            .all()
         )
 
-        formatted_rows.append({
-            "list_name": "Blank Vote",
-            "candidate_name": "-",
-            "votes": blank_votes
-        })
+        for username, district_id, votes in blank_votes:
+            formatted_rows.append({
+                "tenant_id": tenant_id,
+                "district_id": district_id,
+                "ballot_pen": username[-4:],
+                "list_name": None,
+                "candidate_name": None,
+                "votes": votes
+            })
 
         results_by_district[district.id] = formatted_rows
 
     return render_template(
         "tenant/results.html",
         results=results_by_district
-    )
-@tenant_bp.route("/tenant/results/download/<int:district_id>")
+    )@tenant_bp.route("/tenant/results/download/<int:district_id>")
 def download_results(district_id):
 
     if session.get("role") != "tenant":
