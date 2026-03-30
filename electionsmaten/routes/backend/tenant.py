@@ -396,41 +396,120 @@ def tenant_results():
         "tenant/results.html",
         results=results_by_district
     )
-@tenant_bp.route("/tenant/results/download/<int:district_id>")
+@tenant_bp.route("/results/download/<int:district_id>")
 def download_results(district_id):
 
     if session.get("role") != "tenant":
         return redirect(url_for("tenant.login"))
 
     tenant_id = session["tenant_id"]
-    session['role'] = 'tenant'
-    tenant = Tenant.query.get(tenant_id)
-    districts = tenant.districts
+    session["role"] = "tenant"
 
-    rows = (
-    db.session.query(
-        CandidateList.name.label("list_name"),
-        Candidate.name.label("candidate_name"),
-        BallotPen.username.label("username"),  #
-        Tenant.id.label("tenant_id"),  
-        BallotPen.district_id.label("district_id"), 
-        db.func.count(Vote.id).label("votes")
-    )
-    .select_from(Vote)
-    .join(Candidate, Candidate.id == Vote.candidate_id)
-    .join(CandidateList, CandidateList.id == Vote.list_id)
-    .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
-    .filter(BallotPen.district_id == district_id)
-    .group_by(
-        CandidateList.name,
-        Candidate.name,
-        BallotPen.username,
-        Tenant.id
-    )
-    .all()
-)
+    formatted_rows = []
 
-    # Create CSV
+    # ----------------------------
+    # 1. FULL VOTES (list + candidate)
+    # ----------------------------
+    full_votes = (
+        db.session.query(
+            CandidateList.name,
+            Candidate.name,
+            BallotPen.username,
+            BallotPen.district_id,
+            db.func.count(Vote.id)
+        )
+        .join(Candidate, Candidate.id == Vote.candidate_id)
+        .join(CandidateList, CandidateList.id == Vote.list_id)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(BallotPen.district_id == district_id)
+        .group_by(
+            CandidateList.name,
+            Candidate.name,
+            BallotPen.username,
+            BallotPen.district_id
+        )
+        .all()
+    )
+
+    for list_name, candidate_name, username, d_id, votes in full_votes:
+        formatted_rows.append([
+            tenant_id,
+            d_id,
+            username[-4:],
+            list_name,
+            candidate_name,
+            votes
+        ])
+
+    # ----------------------------
+    # 2. LIST ONLY (no candidate)
+    # ----------------------------
+    list_only_votes = (
+        db.session.query(
+            CandidateList.name,
+            BallotPen.username,
+            BallotPen.district_id,
+            db.func.count(Vote.id)
+        )
+        .join(CandidateList, CandidateList.id == Vote.list_id)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.candidate_id == None
+        )
+        .group_by(
+            CandidateList.name,
+            BallotPen.username,
+            BallotPen.district_id
+        )
+        .all()
+    )
+
+    for list_name, username, d_id, votes in list_only_votes:
+        formatted_rows.append([
+            tenant_id,
+            d_id,
+            username[-4:],
+            list_name,
+            "No candidate",
+            votes
+        ])
+
+    # ----------------------------
+    # 3. BLANK VOTES
+    # ----------------------------
+    blank_votes = (
+        db.session.query(
+            BallotPen.username,
+            BallotPen.district_id,
+            db.func.count(Vote.id)
+        )
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.list_id == None,
+            Vote.candidate_id == None
+        )
+        .group_by(
+            BallotPen.username,
+            BallotPen.district_id
+        )
+        .all()
+    )
+
+    for username, d_id, votes in blank_votes:
+        formatted_rows.append([
+            tenant_id,
+            d_id,
+            username[-4:],
+            "None",
+            "None",
+            votes
+        ])
+
+    # ----------------------------
+    # CREATE CSV
+    # ----------------------------
     output = StringIO()
     writer = csv.writer(output)
 
@@ -445,15 +524,8 @@ def download_results(district_id):
     ])
 
     # Rows
-    for r in rows:
-        writer.writerow([
-            r.tenant_id,
-            r.district_id,
-            r.username[-4:],  # last 4 digits
-            r.list_name or "N/A",
-            r.candidate_name or "N/A",
-            r.votes
-        ])
+    for row in formatted_rows:
+        writer.writerow(row)
 
     output.seek(0)
 
