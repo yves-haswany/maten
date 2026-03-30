@@ -7,9 +7,6 @@
 
     <table border="1">
         <tr>
-            <th>Tenant</th>
-            <th>District</th>
-            <th>Ballot Pen</th>
             <th>List</th>
             <th>Candidate</th>
             <th>Votes</th>
@@ -17,9 +14,6 @@
 
         {% for r in rows %}
         <tr>
-            <td>{{ r.tenant_id }}</td>
-            <td>{{ r.district_id }}</td>
-            <td>{{ r.ballot_pen }}</td>
             <td>{{ r.list_name }}</td>
             <td>{{ r.candidate_name }}</td>
             <td>{{ r.votes }}</td>
