@@ -216,11 +216,15 @@ def submit_vote():
     if not is_logged_in():
         return {"error": "Not authorized"}, 401
 
-    list_id = request.form.get("list_id")
-    candidate_id = request.form.get("candidate_id")
+    # ✅ Normalize values
+    list_id = request.form.get("list_id") or None
+    candidate_id = request.form.get("candidate_id") or None
 
-    ballot_pen_id = session["ballot_pen_id"]
-    district_id = session["district_id"]
+    ballot_pen_id = session.get("ballot_pen_id")
+    district_id = session.get("district_id")
+
+    if not ballot_pen_id or not district_id:
+        return {"error": "Session error"}
 
     # Count electors (limit votes)
     elector_count = Elector.query.filter_by(
@@ -234,18 +238,19 @@ def submit_vote():
     if vote_count >= elector_count:
         return {"error": "Maximum number of votes reached"}
 
-    # Validation
+    # ✅ Validation
     if not list_id and candidate_id:
         return {"error": "Select a list first"}
 
     if list_id and candidate_id:
         candidate = Candidate.query.get(candidate_id)
-        if not candidate or str(candidate.candidate_list_id) != list_id:
+        if not candidate or str(candidate.candidate_list_id) != str(list_id):
             return {"error": "Invalid candidate selection"}
 
+    # ✅ Create vote (3 cases handled automatically)
     vote = Vote(
-        list_id=list_id if list_id else None,
-        candidate_id=candidate_id if candidate_id else None,
+        list_id=int(list_id) if list_id else None,
+        candidate_id=int(candidate_id) if candidate_id else None,
         ballot_pen_id=ballot_pen_id
     )
 

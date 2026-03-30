@@ -288,8 +288,8 @@ from sqlalchemy import func, distinct
 
 @tenant_bp.route("/results")
 def tenant_results():
-    tenant_id = session["tenant_id"]
-    session['role'] = 'tenant'
+    tenant_id = session.get("tenant_id")
+
     if session.get("role") != "tenant":
         return redirect(url_for("tenant.login"))
 
@@ -300,43 +300,57 @@ def tenant_results():
 
     for district in districts:
 
-        # Aggregate votes per candidate
+        # ✅ ALL candidates (even with 0 votes)
         rows = (
-    db.session.query(
-        CandidateList.name.label("list_name"),
-        Candidate.name.label("candidate_name"),
-        BallotPen.username.label("username"),  #
-        Tenant.id.label("tenant_id"),  
-        BallotPen.district_id.label("district_id"), 
-        db.func.count(Vote.id).label("votes")
-    )
-    .select_from(Vote)
-    .join(Candidate, Candidate.id == Vote.candidate_id)
-    .join(CandidateList, CandidateList.id == Vote.list_id)
-    .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
-    .filter(BallotPen.district_id == district.id)
-    .group_by(
-        CandidateList.name,
-        Candidate.name,
-        BallotPen.username,
-        Tenant.id
-    )
-    .all()
-)
+            db.session.query(
+                CandidateList.name.label("list_name"),
+                Candidate.name.label("candidate_name"),
+                db.func.count(Vote.id).label("votes")
+            )
+            .select_from(CandidateList)
+            .outerjoin(Candidate, Candidate.candidate_list_id == CandidateList.id)
+            .outerjoin(
+                Vote,
+                (Vote.candidate_id == Candidate.id) |
+                (
+                    (Vote.candidate_id == None) &
+                    (Vote.list_id == CandidateList.id)
+                )
+            )
+            .outerjoin(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+            .filter(
+                (BallotPen.district_id == district.id) | (BallotPen.id == None)
+            )
+            .group_by(CandidateList.name, Candidate.name)
+            .all()
+        )
 
         formatted_rows = []
 
         for r in rows:
-            ballot_pen_number = r.username[-4:] if r.username else "N/A"
-
             formatted_rows.append({
-                "tenant_id": r.tenant_id,
-                "district_id": r.district_id,
-                "ballot_pen": ballot_pen_number,
                 "list_name": r.list_name or "N/A",
-                "candidate_name": r.candidate_name or "N/A",
+                "candidate_name": r.candidate_name or "No candidate",
                 "votes": r.votes
             })
+
+        # ✅ BLANK votes
+        blank_votes = (
+            db.session.query(db.func.count(Vote.id))
+            .join(BallotPen)
+            .filter(
+                BallotPen.district_id == district.id,
+                Vote.list_id == None,
+                Vote.candidate_id == None
+            )
+            .scalar()
+        )
+
+        formatted_rows.append({
+            "list_name": "Blank Vote",
+            "candidate_name": "-",
+            "votes": blank_votes
+        })
 
         results_by_district[district.id] = formatted_rows
 

@@ -35,7 +35,7 @@
         <h3>Candidates</h3>
         <table id="candidate-table">
             <tr>
-                <td colspan="3">Select a list first</td>
+                <td colspan="2">Select a list first</td>
             </tr>
         </table>
     </div>
@@ -57,15 +57,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const voteForm = document.getElementById("vote-form");
     const candidateTable = document.getElementById("candidate-table");
 
-    // ----------------------------
     // LOAD CANDIDATES
-    // ----------------------------
     document.querySelectorAll(".list-radio").forEach(radio => {
         radio.addEventListener("change", () => {
-
-            // Clear selected candidate when switching list
-            const existingCandidate = document.querySelector("input[name='candidate_id']:checked");
-            if (existingCandidate) existingCandidate.checked = false;
 
             fetch(`/get-candidates/${radio.value}`)
             .then(res => res.json())
@@ -76,16 +70,23 @@ document.addEventListener("DOMContentLoaded", () => {
                         <th>Name</th>
                         <th>Select</th>
                     </tr>
+
+                    <!-- ✅ No Candidate option -->
+                    <tr>
+                        <td><em>No candidate (list only)</em></td>
+                        <td>
+                            <input type="radio" name="candidate_id" value="">
+                        </td>
+                    </tr>
                 `;
 
                 if (!data.candidates.length) {
-                    html += `<tr><td colspan="3">No candidates available</td></tr>`;
+                    html += `<tr><td colspan="2">No candidates available</td></tr>`;
                 } else {
                     data.candidates.forEach(c => {
                         html += `
                             <tr>
                                 <td>${c.name}</td>
-                               
                                 <td>
                                     <input type="radio" name="candidate_id" value="${c.candidate_id}">
                                 </td>
@@ -98,14 +99,12 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .catch(err => {
                 console.error(err);
-                candidateTable.innerHTML = "<tr><td colspan='3'>Error loading candidates</td></tr>";
+                candidateTable.innerHTML = "<tr><td colspan='2'>Error loading candidates</td></tr>";
             });
         });
     });
 
-    // ----------------------------
     // SUBMIT VOTE
-    // ----------------------------
     voteForm.addEventListener("submit", e => {
         e.preventDefault();
 
@@ -114,13 +113,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const listSelected = formData.get("list_id");
         const candidateSelected = formData.get("candidate_id");
 
-        // ✅ RULE: candidate cannot exist without list
         if (!listSelected && candidateSelected) {
             alert("You must select a list before choosing a candidate.");
             return;
         }
-
-        // ✅ Blank vote allowed (no list, no candidate)
 
         fetch("/submit-vote", {
             method: "POST",
@@ -136,13 +132,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             alert("Vote submitted successfully!");
 
-            // Reset form
             voteForm.reset();
 
-            // Reset candidate table
             candidateTable.innerHTML = `
                 <tr>
-                    <td colspan="3">Select a list first</td>
+                    <td colspan="2">Select a list first</td>
                 </tr>
             `;
         })
