@@ -395,7 +395,8 @@ def tenant_results():
     return render_template(
         "tenant/results.html",
         results=results_by_district
-    )@tenant_bp.route("/tenant/results/download/<int:district_id>")
+    )
+@tenant_bp.route("/tenant/results/download/<int:district_id>")
 def download_results(district_id):
 
     if session.get("role") != "tenant":
