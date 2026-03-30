@@ -72,10 +72,18 @@ def logout():
 @frontend_bp.route("/dashboard")
 def dashboard():
 
-    if not is_logged_in():
+     if not is_logged_in():
         return redirect(url_for("frontend_bp.login"))
 
-    return render_template("frontend/dashboard.html")
+    # Use ballot_pen_id from session
+     ballot_pen = BallotPen.query.get(session.get("ballot_pen_id"))
+     if not ballot_pen:
+        return redirect(url_for("frontend_bp.login"))
+
+    # Extract last 4 digits of ballot pen username
+     ballot_number = ballot_pen.username[-4:]
+
+     return render_template("frontend/dashboard.html", ballot_number=ballot_number)
 
 
 # ----------------------------

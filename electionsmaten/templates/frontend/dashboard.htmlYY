@@ -8,8 +8,6 @@
     </div>
 
     <!-- HEADER -->
-    <div class="dashboard-header">
-        
 
         <a href="{{ url_for('frontend_bp.logout') }}" class="logout-button">
             Logout
