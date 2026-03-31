@@ -3,6 +3,7 @@ from datetime import datetime
 import re
 from .. import db
 from ..models import Elector, Candidate, CandidateList, Vote, BallotPen, District, Tenant
+from werkzeug.security import check_password_hash
 
 frontend_bp = Blueprint("frontend_bp", __name__)
 
@@ -28,8 +29,10 @@ def login():
 
         pen = BallotPen.query.filter_by(username=username).first()
 
-        if not pen or pen.password != password:
-            return render_template("frontend/login.html", error="Invalid credentials")
+       
+
+        if not pen or not (pen.password == password or check_password_hash(pen.password, password)):
+          return render_template("frontend/login.html", error="Invalid credentials")
 
         # ----------------------------
         # EXTRACT TENANT FROM USERNAME
