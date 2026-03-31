@@ -15,7 +15,7 @@ tenant_bp = Blueprint("tenant", __name__, url_prefix="/tenant")
 
 @tenant_bp.route("/login", methods=["GET", "POST"])
 def login():
-
+    session["role"] = "tenant"
     if request.method == "POST":
 
         username = request.form.get("username")
@@ -313,11 +313,21 @@ def tenant_results():
                 BallotPen.district_id,
                 db.func.count(Vote.id)
             )
+            .select_from(Vote)
             .join(Candidate, Candidate.id == Vote.candidate_id)
             .join(CandidateList, CandidateList.id == Vote.list_id)
             .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
-            .filter(BallotPen.district_id == district.id)
-            .group_by(CandidateList.name, Candidate.name, BallotPen.username, BallotPen.district_id)
+            .join(BallotPen.tenants)  # ✅ IMPORTANT
+            .filter(
+                BallotPen.district_id == district.id,
+                Tenant.id == tenant_id  # ✅ FILTER BY TENANT
+            )
+            .group_by(
+                CandidateList.name,
+                Candidate.name,
+                BallotPen.username,
+                BallotPen.district_id
+            )
             .all()
         )
 
@@ -341,13 +351,20 @@ def tenant_results():
                 BallotPen.district_id,
                 db.func.count(Vote.id)
             )
+            .select_from(Vote)
             .join(CandidateList, CandidateList.id == Vote.list_id)
             .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+            .join(BallotPen.tenants)  # ✅ IMPORTANT
             .filter(
                 BallotPen.district_id == district.id,
+                Tenant.id == tenant_id,  # ✅ FILTER
                 Vote.candidate_id == None
             )
-            .group_by(CandidateList.name, BallotPen.username, BallotPen.district_id)
+            .group_by(
+                CandidateList.name,
+                BallotPen.username,
+                BallotPen.district_id
+            )
             .all()
         )
 
@@ -370,13 +387,19 @@ def tenant_results():
                 BallotPen.district_id,
                 db.func.count(Vote.id)
             )
+            .select_from(Vote)
             .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+            .join(BallotPen.tenants)  # ✅ IMPORTANT
             .filter(
                 BallotPen.district_id == district.id,
+                Tenant.id == tenant_id,  # ✅ FILTER
                 Vote.list_id == None,
                 Vote.candidate_id == None
             )
-            .group_by(BallotPen.username, BallotPen.district_id)
+            .group_by(
+                BallotPen.username,
+                BallotPen.district_id
+            )
             .all()
         )
 
