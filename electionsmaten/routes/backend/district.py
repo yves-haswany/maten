@@ -60,93 +60,98 @@ def results(district_id):
     district = District.query.get_or_404(district_id)
 
     formatted_rows = []
-    # FULL VOTES
+
+    # ----------------------------
+    # 1. FULL VOTES (list + candidate)
+    # ----------------------------
     full_votes = (
         db.session.query(
-            CandidateList.name,
-            Candidate.name,
-            BallotPen.username,
-            func.count(Vote.id)
+            CandidateList.name.label("list_name"),
+            Candidate.name.label("candidate_name"),
+            BallotPen.username.label("username"),
+            func.count(Vote.id).label("votes_count")
         )
         .select_from(Vote)
         .join(Candidate, Candidate.id == Vote.candidate_id)
         .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
-        .filter(BallotPen.district_id == district_id)
-        .group_by(CandidateList.name, Candidate.name, BallotPen.username)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.candidate_id.isnot(None)   # ✅ IMPORTANT
+        )
+        .group_by(
+            CandidateList.name,
+            Candidate.name,
+            BallotPen.username
+        )
         .all()
     )
 
-    results_data = {}
-    for vote in full_votes:
-        candidate = vote.candidate
-        candidate_lis_id = candidate.candidate_list_id
-
-        if candidate is None:
-            # Skip votes that reference a deleted/missing candidate
-            continue
-
-
-        candidate_list = candidate.candidate_list
-        list_name = candidate_list.name if candidate_list else "No List"
-
-    for list_name, candidate_name, username, votes_count in full_votes:
+    for row in full_votes:
         formatted_rows.append({
-            "ballot_pen": username[-4:],
-            "list_name": list_name,
-            "candidate_name": candidate_name,
-            "votes": votes_count
+            "ballot_pen": row.username[-4:],
+            "list_name": row.list_name,
+            "candidate_name": row.candidate_name,
+            "votes": row.votes_count
         })
 
-    # LIST ONLY
+    # ----------------------------
+    # 2. LIST ONLY (no candidate)
+    # ----------------------------
     list_only_votes = (
         db.session.query(
-            CandidateList.name,
-            BallotPen.username,
-            func.count(Vote.id)
+            CandidateList.name.label("list_name"),
+            BallotPen.username.label("username"),
+            func.count(Vote.id).label("votes_count")
         )
         .select_from(Vote)
         .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
         .filter(
             BallotPen.district_id == district_id,
-            Vote.candidate_id == None
+            Vote.candidate_id.is_(None),   # ✅ safer than == None
+            Vote.list_id.isnot(None)
         )
-        .group_by(CandidateList.name, BallotPen.username)
+        .group_by(
+            CandidateList.name,
+            BallotPen.username
+        )
         .all()
     )
 
-    for list_name, username, votes_count in list_only_votes:
+    for row in list_only_votes:
         formatted_rows.append({
-            "ballot_pen": username[-4:],
-            "list_name": list_name,
+            "ballot_pen": row.username[-4:],
+            "list_name": row.list_name,
             "candidate_name": "No candidate",
-            "votes": votes_count
+            "votes": row.votes_count
         })
 
-    # BLANK VOTES
+    # ----------------------------
+    # 3. BLANK VOTES
+    # ----------------------------
     blank_votes = (
         db.session.query(
-            BallotPen.username,
-            func.count(Vote.id)
+            BallotPen.username.label("username"),
+            func.count(Vote.id).label("votes_count")
         )
         .select_from(Vote)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
         .filter(
             BallotPen.district_id == district_id,
-            Vote.list_id == None,
-            Vote.candidate_id == None
+            Vote.list_id.is_(None),
+            Vote.candidate_id.is_(None)
         )
         .group_by(BallotPen.username)
         .all()
     )
 
-    for username, votes_count in blank_votes:
+    for row in blank_votes:
         formatted_rows.append({
-            "ballot_pen": username[-4:],
+            "ballot_pen": row.username[-4:],
             "list_name": None,
             "candidate_name": None,
-            "votes": votes_count
+            "votes": row.votes_count
         })
 
     return render_template(
