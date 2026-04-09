@@ -66,7 +66,7 @@ def results():
     results_data = {}
     for vote in votes:
         candidate = vote.candidate
-        candidate_list = candidate.candidate_list
+        candidate_lis_id = candidate.candidate_list_id
 
         if candidate_list is None:
             list_name = "No List"
