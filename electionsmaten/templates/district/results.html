@@ -1,3 +1,19 @@
+<div class="dashboard-header">
+    <div class="dashboard-title">
+        District {{ district.id }} Results
+    </div>
+
+    <div>
+        <a href="{{ url_for('district.download_results', district_id=district.id) }}">
+            <button>⬇ Download CSV</button>
+        </a>
+
+        <a href="{{ url_for('district.dashboard') }}">
+            <button>⬅ Back</button>
+        </a>
+    </div>
+</div>
+
 {% if results %}
 <table class="results-table">
     <thead>
@@ -15,8 +31,8 @@
         <tr>
             <td>{{ loop.index }}</td>
             <td>{{ row.ballot_pen }}</td>
-            <td>{{ row.list_name or "—" }}</td>
-            <td>{{ row.candidate_name or "—" }}</td>
+            <td>{{ row.list_name or "None" }}</td>
+            <td>{{ row.candidate_name or "None" }}</td>
             <td>{{ row.votes }}</td>
         </tr>
         {% endfor %}

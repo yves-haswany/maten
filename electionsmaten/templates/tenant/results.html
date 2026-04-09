@@ -3,11 +3,9 @@
     </a>
 
     <!-- Download CSV (per district) -->
-    {% for district_id in results.keys() %}
-        <a href="{{ url_for('tenant.download_results', district_id=district_id) }}">
-            <button>⬇ Download District {{ district_id }} CSV</button>
-        </a>
-    {% endfor %}
+   <a href="{{ url_for('tenant.download_all_results') }}">
+    <button>⬇ Download All Results CSV</button>
+</a>
 <table border="1" cellpadding="5" cellspacing="0">
     <thead>
         <tr>
