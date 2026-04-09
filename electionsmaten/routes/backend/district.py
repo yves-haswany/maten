@@ -160,45 +160,121 @@ def results(district_id):
         results=formatted_rows,
         district=district
     )
+from io import StringIO
+import csv
+from flask import Response, session, redirect, url_for
 @district_bp.route('/results/download')
 def download_results():
+   
+
+    # Make sure district is in session
     if 'district_id' not in session:
         return redirect(url_for('district.login'))
 
     district_id = session['district_id']
-
-    votes = (
-        Vote.query
-        .join(Elector)
-        .filter(Elector.district_id == district_id)
-        .all()
-    )
-
-    from io import StringIO
-    import csv
-    from flask import Response
+    district = District.query.get_or_404(district_id)
 
     output = StringIO()
     writer = csv.writer(output)
 
     # Header
-    writer.writerow([
-        "Elector ID",
-        "Candidate Name",
-        "Candidate ID",
-        "List ID"
-    ])
+    writer.writerow(["District", "Ballot Pen", "List", "Candidate", "Votes"])
 
-    # Rows
-    for vote in votes:
-        candidate = vote.candidate
-        elector = vote.elector
+    # ----------------------------
+    # 1. FULL VOTES (list + candidate)
+    # ----------------------------
+    full_votes = (
+        db.session.query(
+            CandidateList.name.label("list_name"),
+            Candidate.name.label("candidate_name"),
+            BallotPen.username.label("username"),
+            db.func.count(Vote.id).label("votes_count")
+        )
+        .select_from(Vote)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .outerjoin(Candidate, Candidate.id == Vote.candidate_id)
+        .outerjoin(CandidateList, CandidateList.id == Vote.list_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.candidate_id.isnot(None),
+            Vote.list_id.isnot(None)
+        )
+        .group_by(
+            CandidateList.name,
+            Candidate.name,
+            BallotPen.username
+        )
+        .all()
+    )
 
+    for row in full_votes:
         writer.writerow([
-            elector.elector_id if elector else None,
-            candidate.name if candidate else "No candidate",
-            candidate.id if candidate else None,
-            candidate.candidate_list_id if candidate else None
+            district.id,
+            row.username[-4:],
+            row.list_name,
+            row.candidate_name,
+            row.votes_count
+        ])
+
+    # ----------------------------
+    # 2. LIST ONLY (no candidate)
+    # ----------------------------
+    list_only_votes = (
+        db.session.query(
+            CandidateList.name.label("list_name"),
+            BallotPen.username.label("username"),
+            db.func.count(Vote.id).label("votes_count")
+        )
+        .select_from(Vote)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .outerjoin(CandidateList, CandidateList.id == Vote.list_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.candidate_id.is_(None),
+            Vote.list_id.isnot(None)
+        )
+        .group_by(
+            CandidateList.name,
+            BallotPen.username
+        )
+        .all()
+    )
+
+    for row in list_only_votes:
+        writer.writerow([
+            district.id,
+            row.username[-4:],
+            row.list_name,
+            "No candidate",
+            row.votes_count
+        ])
+
+    # ----------------------------
+    # 3. BLANK VOTES
+    # ----------------------------
+    blank_votes = (
+        db.session.query(
+            BallotPen.username.label("username"),
+            db.func.count(Vote.id).label("votes_count")
+        )
+        .select_from(Vote)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.list_id.is_(None),
+            Vote.candidate_id.is_(None)
+        )
+        .group_by(BallotPen.username)
+        .all()
+    )
+
+    for row in blank_votes:
+        writer.writerow([
+            district.id,
+            row.username[-4:],
+            "None",
+            "None",
+            row.votes_count
         ])
 
     output.seek(0)
@@ -206,7 +282,5 @@ def download_results():
     return Response(
         output,
         mimetype="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=district_results.csv"
-        }
+        headers={"Content-Disposition": f"attachment; filename=district_{district_id}_results.csv"}
     )

@@ -441,74 +441,145 @@ def tenant_results():
         "tenant/results.html",
         results=results_by_district
     )
-@tenant_bp.route("/download-all-results")
-def download_all_results():
-    tenant_id = session.get("tenant_id")
+@tenant_bp.route("/results/download/<int:district_id>")
+def download_results(district_id):
 
     if session.get("role") != "tenant":
         return redirect(url_for("tenant.login"))
 
-    tenant = Tenant.query.get(tenant_id)
-    districts = tenant.districts
+    tenant_id = session["tenant_id"]
+    session["role"] = "tenant"
 
-    import csv
-    from io import StringIO
-    from flask import Response
+    formatted_rows = []
 
+    # ----------------------------
+    # 1. FULL VOTES (list + candidate)
+    # ----------------------------
+    full_votes = (
+        db.session.query(
+            CandidateList.name,
+            Candidate.name,
+            BallotPen.username,
+            BallotPen.district_id,
+            db.func.count(Vote.id)
+        )
+        .join(Candidate, Candidate.id == Vote.candidate_id)
+        .join(CandidateList, CandidateList.id == Vote.list_id)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(BallotPen.district_id == district_id)
+        .group_by(
+            CandidateList.name,
+            Candidate.name,
+            BallotPen.username,
+            BallotPen.district_id
+        )
+        .all()
+    )
+
+    for list_name, candidate_name, username, d_id, votes in full_votes:
+        formatted_rows.append([
+            tenant_id,
+            d_id,
+            username[-4:],
+            list_name,
+            candidate_name,
+            votes
+        ])
+
+    # ----------------------------
+    # 2. LIST ONLY (no candidate)
+    # ----------------------------
+    list_only_votes = (
+        db.session.query(
+            CandidateList.name,
+            BallotPen.username,
+            BallotPen.district_id,
+            db.func.count(Vote.id)
+        )
+        .join(CandidateList, CandidateList.id == Vote.list_id)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.candidate_id == None
+        )
+        .group_by(
+            CandidateList.name,
+            BallotPen.username,
+            BallotPen.district_id
+        )
+        .all()
+    )
+
+    for list_name, username, d_id, votes in list_only_votes:
+        formatted_rows.append([
+            tenant_id,
+            d_id,
+            username[-4:],
+            list_name,
+            "No candidate",
+            votes
+        ])
+
+    # ----------------------------
+    # 3. BLANK VOTES
+    # ----------------------------
+    blank_votes = (
+        db.session.query(
+            BallotPen.username,
+            BallotPen.district_id,
+            db.func.count(Vote.id)
+        )
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.list_id == None,
+            Vote.candidate_id == None
+        )
+        .group_by(
+            BallotPen.username,
+            BallotPen.district_id
+        )
+        .all()
+    )
+
+    for username, d_id, votes in blank_votes:
+        formatted_rows.append([
+            tenant_id,
+            d_id,
+            username[-4:],
+            "None",
+            "None",
+            votes
+        ])
+
+    # ----------------------------
+    # CREATE CSV
+    # ----------------------------
     output = StringIO()
     writer = csv.writer(output)
 
     # Header
-    writer.writerow(["Tenant", "District", "Ballot Pen", "List", "Candidate", "Votes"])
+    writer.writerow([
+        "tenant_id",
+        "district_id",
+        "ballot_pen_number",
+        "list_name",
+        "candidate_name",
+        "votes"
+    ])
 
-    for district in districts:
-
-        # reuse SAME queries you already wrote
-        # (copy your 3 blocks here)
-
-        # Example for FULL votes:
-        full_votes = (
-            db.session.query(
-                CandidateList.name,
-                Candidate.name,
-                BallotPen.username,
-                db.func.count(Vote.id)
-            )
-            .select_from(Vote)
-            .join(Candidate, Candidate.id == Vote.candidate_id)
-            .join(CandidateList, CandidateList.id == Vote.list_id)
-            .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
-            .join(BallotPen.tenants)
-            .filter(
-                BallotPen.district_id == district.id,
-                Tenant.id == tenant_id
-            )
-            .group_by(
-                CandidateList.name,
-                Candidate.name,
-                BallotPen.username
-            )
-            .all()
-        )
-
-        for list_name, candidate_name, username, votes in full_votes:
-            writer.writerow([
-                tenant_id,
-                district.id,
-                username[-4:],
-                list_name,
-                candidate_name,
-                votes
-            ])
-
-        # 👉 repeat for list_only + blank (same as your tenant_results)
+    # Rows
+    for row in formatted_rows:
+        writer.writerow(row)
 
     output.seek(0)
 
     return Response(
         output,
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=all_results.csv"}
+        headers={
+            "Content-Disposition": f"attachment;filename=results_district_{district_id}.csv"
+        }
     )
 @tenant_bp.route("/electors")
 def view_electors():
