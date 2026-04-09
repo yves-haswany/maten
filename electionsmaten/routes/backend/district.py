@@ -59,7 +59,110 @@ from electionsmaten.models import Vote, Candidate, CandidateList, BallotPen, Dis
 def results(district_id):
     district = District.query.get_or_404(district_id)
 
+    formatted_rows = []@district_bp.route("/results/<int:district_id>")
+def results(district_id):
+    district = District.query.get_or_404(district_id)
+
     formatted_rows = []
+
+    # ----------------------------
+    # 1. FULL VOTES (list + candidate)
+    # ----------------------------
+    full_votes = (
+        db.session.query(
+            CandidateList.name.label("list_name"),
+            Candidate.name.label("candidate_name"),
+            BallotPen.username.label("username"),
+            func.count(Vote.id).label("votes_count")
+        )
+        .select_from(Vote)
+        .join(Candidate, Candidate.id == Vote.candidate_id)
+        .join(CandidateList, CandidateList.id == Vote.list_id)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.candidate_id.isnot(None)   # ✅ IMPORTANT
+        )
+        .group_by(
+            CandidateList.name,
+            Candidate.name,
+            BallotPen.username
+        )
+        .all()
+    )
+
+    for row in full_votes:
+        formatted_rows.append({
+            "ballot_pen": row.username[-4:],
+            "list_name": row.list_name,
+            "candidate_name": row.candidate_name,
+            "votes": row.votes_count
+        })
+
+    # ----------------------------
+    # 2. LIST ONLY (no candidate)
+    # ----------------------------
+    list_only_votes = (
+        db.session.query(
+            CandidateList.name.label("list_name"),
+            BallotPen.username.label("username"),
+            func.count(Vote.id).label("votes_count")
+        )
+        .select_from(Vote)
+        .join(CandidateList, CandidateList.id == Vote.list_id)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.candidate_id.is_(None),   # ✅ safer than == None
+            Vote.list_id.isnot(None)
+        )
+        .group_by(
+            CandidateList.name,
+            BallotPen.username
+        )
+        .all()
+    )
+
+    for row in list_only_votes:
+        formatted_rows.append({
+            "ballot_pen": row.username[-4:],
+            "list_name": row.list_name,
+            "candidate_name": "No candidate",
+            "votes": row.votes_count
+        })
+
+    # ----------------------------
+    # 3. BLANK VOTES
+    # ----------------------------
+    blank_votes = (
+        db.session.query(
+            BallotPen.username.label("username"),
+            func.count(Vote.id).label("votes_count")
+        )
+        .select_from(Vote)
+        .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .filter(
+            BallotPen.district_id == district_id,
+            Vote.list_id.is_(None),
+            Vote.candidate_id.is_(None)
+        )
+        .group_by(BallotPen.username)
+        .all()
+    )
+
+    for row in blank_votes:
+        formatted_rows.append({
+            "ballot_pen": row.username[-4:],
+            "list_name": None,
+            "candidate_name": None,
+            "votes": row.votes_count
+        })
+
+    return render_template(
+        "district/results.html",
+        results=formatted_rows,
+        district=district
+    )
 
     # FULL VOTES
     full_votes = (
