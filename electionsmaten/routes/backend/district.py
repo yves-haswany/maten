@@ -88,7 +88,7 @@ def results(district_id):
     )
 
     results_data = {}
-    for vote in votes:
+    for vote in full_votes:
         candidate = vote.candidate
         candidate_lis_id = candidate.candidate_list_id
 
