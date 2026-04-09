@@ -60,7 +60,7 @@ def results(district_id):
     # Fetch the district
     district = District.query.get(district_id)
     if not district:
-        abort(404, description="District not found")
+        abort(404, "District not found")
 
     formatted_rows = []
 
@@ -78,7 +78,7 @@ def results(district_id):
         .join(Candidate, Candidate.id == Vote.candidate_id)
         .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
-        .filter(BallotPen.district_id == district.id)
+        .filter(BallotPen.district_id == district_id)
         .group_by(
             CandidateList.name,
             Candidate.name,
@@ -102,6 +102,7 @@ def results(district_id):
 
     for list_name, candidate_name, username, votes_count in full_votes:
         formatted_rows.append({
+            "district_id": district_id,
             "ballot_pen": username[-4:],
             "list_name": list_name,
             "candidate_name": candidate_name,
@@ -122,7 +123,7 @@ def results(district_id):
         .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
         .filter(
-            BallotPen.district_id == district.id,
+            BallotPen.district_id == district_id,
             Vote.candidate_id == None
         )
         .group_by(
@@ -134,6 +135,7 @@ def results(district_id):
 
     for list_name, username, votes_count in list_only_votes:
         formatted_rows.append({
+            "district_id": district_id,
             "ballot_pen": username[-4:],
             "list_name": list_name,
             "candidate_name": "No candidate",
@@ -151,29 +153,24 @@ def results(district_id):
         .select_from(Vote)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
         .filter(
-            BallotPen.district_id == district.id,
+            BallotPen.district_id == district_id,
             Vote.list_id == None,
             Vote.candidate_id == None
         )
-        .group_by(
-            BallotPen.username
-        )
+        .group_by(BallotPen.username)
         .all()
     )
 
     for username, votes_count in blank_votes:
         formatted_rows.append({
+            "district_id": district_id,
             "ballot_pen": username[-4:],
             "list_name": None,
             "candidate_name": None,
             "votes": votes_count
         })
 
-    return render_template(
-        "district/results.html",
-        district=district,
-        results=formatted_rows
-    )
+    return render_template("district/results.html", results=formatted_rows, district=district)
 @district_bp.route('/results/download')
 def download_results():
     if 'district_id' not in session:
