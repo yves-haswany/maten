@@ -57,16 +57,11 @@ from electionsmaten.models import Vote, Candidate, CandidateList, BallotPen, Dis
 
 @district_bp.route("/results/<int:district_id>")
 def results(district_id):
-    # Fetch the district
-    district = District.query.get(district_id)
-    if not district:
-        abort(404, "District not found")
+    district = District.query.get_or_404(district_id)
 
     formatted_rows = []
 
-    # ----------------------------
-    # 1. FULL VOTES (list + candidate)
-    # ----------------------------
+    # FULL VOTES
     full_votes = (
         db.session.query(
             CandidateList.name,
@@ -79,26 +74,19 @@ def results(district_id):
         .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
         .filter(BallotPen.district_id == district_id)
-        .group_by(
-            CandidateList.name,
-            Candidate.name,
-            BallotPen.username
-        )
+        .group_by(CandidateList.name, Candidate.name, BallotPen.username)
         .all()
     )
 
     for list_name, candidate_name, username, votes_count in full_votes:
         formatted_rows.append({
-            "district_id": district_id,
             "ballot_pen": username[-4:],
             "list_name": list_name,
             "candidate_name": candidate_name,
             "votes": votes_count
         })
 
-    # ----------------------------
-    # 2. LIST ONLY (no candidate)
-    # ----------------------------
+    # LIST ONLY
     list_only_votes = (
         db.session.query(
             CandidateList.name,
@@ -106,32 +94,25 @@ def results(district_id):
             func.count(Vote.id)
         )
         .select_from(Vote)
-        .outerjoin(Candidate, Candidate.id == Vote.candidate_id)
         .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
         .filter(
             BallotPen.district_id == district_id,
             Vote.candidate_id == None
         )
-        .group_by(
-            CandidateList.name,
-            BallotPen.username
-        )
+        .group_by(CandidateList.name, BallotPen.username)
         .all()
     )
 
     for list_name, username, votes_count in list_only_votes:
         formatted_rows.append({
-            "district_id": district_id,
             "ballot_pen": username[-4:],
             "list_name": list_name,
             "candidate_name": "No candidate",
             "votes": votes_count
         })
 
-    # ----------------------------
-    # 3. BLANK VOTES (no list, no candidate)
-    # ----------------------------
+    # BLANK VOTES
     blank_votes = (
         db.session.query(
             BallotPen.username,
@@ -150,14 +131,17 @@ def results(district_id):
 
     for username, votes_count in blank_votes:
         formatted_rows.append({
-            "district_id": district_id,
             "ballot_pen": username[-4:],
             "list_name": None,
             "candidate_name": None,
             "votes": votes_count
         })
 
-    return render_template("district/results.html", results=formatted_rows, district=district)
+    return render_template(
+        "district/results.html",
+        results=formatted_rows,
+        district=district
+    )
 @district_bp.route('/results/download')
 def download_results():
     if 'district_id' not in session:
