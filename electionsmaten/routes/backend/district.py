@@ -72,12 +72,13 @@ def results(district_id):
             func.count(Vote.id).label("votes_count")
         )
         .select_from(Vote)
-        .join(Candidate, Candidate.id == Vote.candidate_id)
-        .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .outerjoin(Candidate, Candidate.id == Vote.candidate_id)
+        .outerjoin(CandidateList, CandidateList.id == Vote.list_id)
         .filter(
             BallotPen.district_id == district_id,
-            Vote.candidate_id.isnot(None)   # ✅ IMPORTANT
+            Vote.candidate_id.isnot(None),
+            Vote.list_id.isnot(None)
         )
         .group_by(
             CandidateList.name,
@@ -105,11 +106,11 @@ def results(district_id):
             func.count(Vote.id).label("votes_count")
         )
         .select_from(Vote)
-        .join(CandidateList, CandidateList.id == Vote.list_id)
         .join(BallotPen, BallotPen.id == Vote.ballot_pen_id)
+        .outerjoin(CandidateList, CandidateList.id == Vote.list_id)
         .filter(
             BallotPen.district_id == district_id,
-            Vote.candidate_id.is_(None),   # ✅ safer than == None
+            Vote.candidate_id.is_(None),
             Vote.list_id.isnot(None)
         )
         .group_by(
