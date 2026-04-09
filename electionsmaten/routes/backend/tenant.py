@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash,generate_password_hash
 
 from ... import db
 from ...models import CandidateList, Candidate, District, Tenant, Vote, Elector, BallotPen
@@ -12,7 +12,8 @@ tenant_bp = Blueprint("tenant", __name__, url_prefix="/tenant")
 # -----------------------
 # LOGIN
 # -----------------------
-
+def get_tenant_letter(tenant_id):
+    return chr(64 + tenant_id)  # 1→A, 2→B
 @tenant_bp.route("/login", methods=["GET", "POST"])
 def login():
     session["role"] = "tenant"
@@ -64,13 +65,34 @@ def dashboard():
 # VIEW DISTRICTS
 # -----------------------
 
-@tenant_bp.route("/districts")
+@tenant_bp.route("/districts", methods=["GET", "POST"])
 def view_districts():
 
     if "tenant_id" not in session:
         return redirect(url_for("tenant.login"))
 
     tenant = Tenant.query.get(session["tenant_id"])
+
+    # 🔥 HANDLE UPDATE
+    if request.method == "POST":
+        district_id = request.form.get("district_id")
+
+        district = District.query.get(district_id)
+
+        if district and district in tenant.districts:
+
+            # Generate username
+            letter = get_tenant_letter(tenant.id)
+            username = f"{tenant.id}{letter}{district.id}D"
+
+            district.username = username
+            district.password = generate_password_hash(username)  # 🔒 hashed
+
+            db.session.commit()
+
+            flash(f"Credentials set for District {district.id}", "success")
+
+        return redirect(url_for("tenant.view_districts"))
 
     return render_template(
         "tenant/view_districts.html",

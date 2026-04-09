@@ -1,0 +1,57 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<div class="dashboard-container">
+
+    <!-- HEADER -->
+    <div class="dashboard-header">
+        <div class="dashboard-title">District Results</div>
+
+        <div>
+            <a href="{{ url_for('district.download_results') }}" class="dashboard-card">
+                Download CSV
+            </a>
+
+            <a href="{{ url_for('district.dashboard') }}" class="logout-button">
+                Back
+            </a>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-container">
+
+        {% if votes %}
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Elector ID</th>
+                    <th>Candidate</th>
+                    <th>Candidate ID</th>
+                    <th>List ID</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for vote in votes %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ vote.elector.elector_id }}</td>
+                    <td>{{ vote.candidate.name }}</td>
+                    <td>{{ vote.candidate.id }}</td>
+                    <td>{{ vote.candidate.candidate_list_id }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No votes recorded for this district.</p>
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}
