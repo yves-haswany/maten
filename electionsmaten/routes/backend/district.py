@@ -173,12 +173,13 @@ def download_results():
 
     district_id = session['district_id']
     district = District.query.get_or_404(district_id)
+    tenant_id = district.tenant_id  # <-- Add tenant ID here
 
     output = StringIO()
     writer = csv.writer(output)
 
     # Header
-    writer.writerow(["District", "Ballot Pen", "List", "Candidate", "Votes"])
+    writer.writerow(["Tenant ID", "District", "Ballot Pen", "List", "Candidate", "Votes"])
 
     # ----------------------------
     # 1. FULL VOTES (list + candidate)
@@ -209,6 +210,7 @@ def download_results():
 
     for row in full_votes:
         writer.writerow([
+            tenant_id,
             district.id,
             row.username[-4:],
             row.list_name,
@@ -242,6 +244,7 @@ def download_results():
 
     for row in list_only_votes:
         writer.writerow([
+            tenant_id,
             district.id,
             row.username[-4:],
             row.list_name,
@@ -270,6 +273,7 @@ def download_results():
 
     for row in blank_votes:
         writer.writerow([
+            tenant_id,
             district.id,
             row.username[-4:],
             "None",
