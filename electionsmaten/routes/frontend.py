@@ -31,7 +31,7 @@ def login():
 
        
 
-        if not pen or not (pen.password == password or check_password_hash(pen.password, password)):
+        if not pen or not check_password_hash(pen.password, password):
           return render_template("frontend/login.html", error="Invalid credentials")
 
         # ----------------------------
@@ -125,6 +125,7 @@ def submit_elector():
 
     existing = Elector.query.filter_by(
         elector_id=elector_id_input,
+        tenant_id=tenant_id,
         district_id=district_id
     ).first()
 
@@ -134,7 +135,7 @@ def submit_elector():
 
     new_elector = Elector(
     elector_id=elector_id_input,
-    tenant_id=session["tenant_id"],
+    tenant_id=tenant_id,
     district_id=session["district_id"],
     submitted_at=datetime.utcnow(),
     ballot_pen_id=session.get("ballot_pen_id")
@@ -173,7 +174,15 @@ def view_electors():
     if not is_logged_in():
         return redirect(url_for("frontend_bp.login"))
 
-    electors = Elector.query.order_by(Elector.submitted_at.desc()).all()
+    tenant_id = session.get("tenant_id")
+    district_id = session.get("district_id")
+    ballot_pen_id = session.get("ballot_pen_id")
+    electors = Elector.query.filter_by(
+        tenant_id=session["tenant_id"], 
+        district_id=session["district_id"],   # ✅ FIX
+        ballot_pen_id=session["ballot_pen_id"]
+    ).order_by(Elector.submitted_at.desc()).all()
+
 
     return render_template("frontend/view_electors.html", electors=electors)
 
