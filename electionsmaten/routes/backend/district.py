@@ -53,25 +53,24 @@ def electors():
 
 @district_bp.route("/results")
 def results():
-    # Fetch all votes and eager-load related candidate and candidate_list
+    # Fetch all votes and eager-load candidate + candidate_list
     votes = (
         Vote.query
         .options(
-            joinedload(Vote.candidate).joinedload(Candidate.candidate_list)
+            joinedload(Vote.candidate).joinedload("candidate_list")
         )
         .all()
     )
 
-    # Build a structured results dictionary
     results_data = {}
     for vote in votes:
         candidate = vote.candidate
-        candidate_list = candidate.candidate_list
+        if candidate is None:
+            # Skip votes that reference a deleted/missing candidate
+            continue
 
-        if candidate_list is None:
-            list_name = "No List"
-        else:
-            list_name = candidate_list.name
+        candidate_list = candidate.candidate_list
+        list_name = candidate_list.name if candidate_list else "No List"
 
         if list_name not in results_data:
             results_data[list_name] = {}
