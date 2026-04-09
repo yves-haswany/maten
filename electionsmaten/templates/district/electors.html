@@ -1,0 +1,47 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<div class="dashboard-container">
+
+    <!-- HEADER -->
+    <div class="dashboard-header">
+        <div class="dashboard-title">District Electors</div>
+
+        <a href="{{ url_for('district.dashboard') }}" class="logout-button">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-container">
+
+        {% if electors %}
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Elector ID</th>
+                    <th>District ID</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for elector in electors %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ elector.elector_id }}</td>
+                    <td>{{ elector.district_id }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No electors found for this district.</p>
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

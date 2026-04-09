@@ -1,0 +1,29 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<header class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">
+        District Dashboard - {{ district.name }}
+    </h1>
+
+    <a href="{{ url_for('district.logout') }}" class="logout-button">
+        Logout
+    </a>
+</header>
+
+<div class="dashboard-grid">
+
+    <a href="{{ url_for('district.electors') }}" class="dashboard-card">
+        <h2>View Electors</h2>
+        <p>See all electors registered in this district</p>
+    </a>
+
+    <a href="{{ url_for('district.results') }}" class="dashboard-card">
+        <h2>View Results</h2>
+        <p>Check voting results for this district</p>
+    </a>
+
+</div>
+
+{% endblock %}
