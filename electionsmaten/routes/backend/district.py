@@ -167,11 +167,17 @@ def download_results():
 
     district_id = session['district_id']
 
-    votes = Vote.query.join(Elector).filter(
-        Elector.district_id == district_id
-    ).all()
+    votes = (
+        Vote.query
+        .join(Elector)
+        .filter(Elector.district_id == district_id)
+        .all()
+    )
 
-    # Create CSV in memory
+    from io import StringIO
+    import csv
+    from flask import Response
+
     output = StringIO()
     writer = csv.writer(output)
 
@@ -185,11 +191,14 @@ def download_results():
 
     # Rows
     for vote in votes:
+        candidate = vote.candidate
+        elector = vote.elector
+
         writer.writerow([
-            vote.elector.elector_id,
-            vote.candidate.name,
-            vote.candidate.id,
-            vote.candidate.candidate_list_id
+            elector.elector_id if elector else None,
+            candidate.name if candidate else "No candidate",
+            candidate.id if candidate else None,
+            candidate.candidate_list_id if candidate else None
         ])
 
     output.seek(0)
@@ -198,6 +207,6 @@ def download_results():
         output,
         mimetype="text/csv",
         headers={
-            "Content-Disposition": "attachment;filename=district_results.csv"
+            "Content-Disposition": "attachment; filename=district_results.csv"
         }
     )
