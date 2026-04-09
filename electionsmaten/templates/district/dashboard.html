@@ -19,7 +19,7 @@
         <p>See all electors registered in this district</p>
     </a>
 
-    <a href="{{ url_for('district.results') }}" class="dashboard-card">
+    <a href="{{ url_for('district.results') , district_id=district.id}}" class="dashboard-card">
         <h2>View Results</h2>
         <p>Check voting results for this district</p>
     </a>
