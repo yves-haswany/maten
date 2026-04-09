@@ -65,13 +65,12 @@ def results():
     results_data = {}
     for vote in votes:
         candidate = vote.candidate
-<<<<<<< HEAD
         candidate_lis_id = candidate.candidate_list_id
-=======
+
         if candidate is None:
             # Skip votes that reference a deleted/missing candidate
             continue
->>>>>>> ffdfb98fe9542817353c4def9ca9e3a29cbb8fd5
+
 
         candidate_list = candidate.candidate_list
         list_name = candidate_list.name if candidate_list else "No List"
