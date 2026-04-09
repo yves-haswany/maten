@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!--<!DOCTYPE html>
 <html>
 <head>
     <title>Dashboard</title>
@@ -39,7 +39,7 @@
     <div class="dashboard-container">
         <h2>Elections 2026</h2>
 
-        <!-- Corrected Blueprint-aware links -->
+        
         <a class="dashboard-btn" href="{{ url_for('frontend.index') }}">Submit Elector IDs</a>
         <a class="dashboard-btn" href="{{ url_for('frontend.view_electors') }}">View Electors</a>
         <a class="dashboard-btn" href="{{ url_for('frontend.cast_vote') }}">Cast a Vote</a>
@@ -48,4 +48,47 @@
 
     </div>
 </body>
-</html>
+</html>-->
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<div class="dashboard-container">
+    <div class="arabic-header">
+        الانتخابات النيابية 2028 المتن قلم {{ ballot_number }}
+    </div>
+    <!-- HEADER -->
+    <div class="dashboard-header">
+        <div class="dashboard-title">Dashboard</div>
+
+        <a href="{{ url_for('frontend_bp.logout') }}" class="logout-button">
+            Logout
+        </a>
+    </div>
+
+    <!-- GRID -->
+    <div class="dashboard-grid">
+
+        <!-- Enter Electors -->
+        <a href="{{ url_for('frontend_bp.enter_electors') }}" class="dashboard-card">
+            <h2>Enter Electors</h2>
+            <p>Add elector IDs before voting</p>
+        </a>
+
+        <!-- View Electors -->
+        <a href="{{ url_for('frontend_bp.view_electors') }}" class="dashboard-card">
+            <h2>View Electors</h2>
+            <p>See submitted elector IDs</p>
+        </a>
+
+        <!-- Cast Vote -->
+        <a href="{{ url_for('frontend_bp.cast_vote') }}" class="dashboard-card">
+            <h2>Cast Vote</h2>
+            <p>Submit votes securely</p>
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

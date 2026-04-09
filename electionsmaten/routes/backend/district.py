@@ -181,6 +181,19 @@ def results(district_id):
         .all()
     )
 
+    results_data = {}
+    for vote in full_votes:
+        candidate = vote.candidate
+        candidate_lis_id = candidate.candidate_list_id
+
+        if candidate is None:
+            # Skip votes that reference a deleted/missing candidate
+            continue
+
+
+        candidate_list = candidate.candidate_list
+        list_name = candidate_list.name if candidate_list else "No List"
+
     for list_name, candidate_name, username, votes_count in full_votes:
         formatted_rows.append({
             "ballot_pen": username[-4:],
