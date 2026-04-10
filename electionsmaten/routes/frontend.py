@@ -4,6 +4,7 @@ import re
 from .. import db
 from ..models import Elector, Candidate, CandidateList, Vote, BallotPen, District, Tenant
 from werkzeug.security import check_password_hash
+import uuid
 
 frontend_bp = Blueprint("frontend_bp", __name__)
 
@@ -29,13 +30,18 @@ def login():
 
         pen = BallotPen.query.filter_by(username=username).first()
 
-       
-
         if not pen or not check_password_hash(pen.password, password):
-          return render_template("frontend/login.html", error="Invalid credentials")
+            return render_template("frontend/login.html", error="Invalid credentials")
+
+        # 🚫 BLOCK MULTIPLE LOGINS
+        if pen.active_session_token:
+            return render_template(
+                "frontend/login.html",
+                error="This account is already logged in on another device"
+            )
 
         # ----------------------------
-        # EXTRACT TENANT FROM USERNAME
+        # EXTRACT TENANT / DISTRICT
         # ----------------------------
         match = re.match(r"(\d)[A-Z](\d+)D\d+", username)
         if not match:
@@ -45,6 +51,13 @@ def login():
         district_id = int(match.group(2))
 
         # ----------------------------
+        # CREATE UNIQUE SESSION TOKEN
+        # ----------------------------
+        session_token = str(uuid.uuid4())
+        pen.active_session_token = session_token
+        db.session.commit()
+
+        # ----------------------------
         # STORE IN SESSION
         # ----------------------------
         session.clear()
@@ -52,6 +65,7 @@ def login():
         session["tenant_id"] = tenant_id
         session["district_id"] = district_id
         session["role"] = "ballot_pen"
+        session["session_token"] = session_token
 
         return redirect(url_for("frontend_bp.dashboard"))
 
