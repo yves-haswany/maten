@@ -162,7 +162,7 @@ class BallotPen(db.Model):
         backref="ballot_pen",
         lazy=True
     )
-    active_session_token = db.Column(db.String(255), nullable=True)
+    active_session_token = db.Column(db.String(255), nullable=True, default=None)
 
 
 # ---------------------------
