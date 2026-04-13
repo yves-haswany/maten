@@ -70,6 +70,14 @@ def login():
         return redirect(url_for("frontend_bp.dashboard"))
 
     return render_template("frontend/login.html")
+@frontend_bp.before_app_request
+def check_single_session():
+    if "ballot_pen_id" in session:
+        pen = BallotPen.query.get(session["ballot_pen_id"])
+
+        if not pen or pen.active_session_token != session.get("session_token"):
+            session.clear()
+            return redirect(url_for("frontend_bp.login"))
 
 
 # ----------------------------
@@ -78,6 +86,13 @@ def login():
 
 @frontend_bp.route("/logout")
 def logout():
+    if "ballot_pen_id" in session:
+        pen = BallotPen.query.get(session["ballot_pen_id"])
+
+        if pen:
+            pen.active_session_token = None
+            db.session.commit()
+
     session.clear()
     return redirect(url_for("frontend_bp.login"))
 
