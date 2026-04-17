@@ -104,18 +104,45 @@ def logout():
 @frontend_bp.route("/dashboard")
 def dashboard():
 
-     if not is_logged_in():
+    if not is_logged_in():
         return redirect(url_for("frontend_bp.login"))
 
-    # Use ballot_pen_id from session
-     ballot_pen = BallotPen.query.get(session.get("ballot_pen_id"))
-     if not ballot_pen:
+    ballot_pen = BallotPen.query.get(session.get("ballot_pen_id"))
+    if not ballot_pen:
         return redirect(url_for("frontend_bp.login"))
 
-    # Extract last 4 digits of ballot pen username
-     ballot_number = ballot_pen.username[-4:]
+    # Extract last 4 digits
+    ballot_number = ballot_pen.username[-4:]
 
-     return render_template("frontend/dashboard.html", ballot_number=ballot_number)
+    # ----------------------------
+    # DISTRICT NAME MAPPING
+    # ----------------------------
+    district_names = {
+        1: "دائرة بيروت الاولى",
+        2: "دائرة بيروت الثانية",
+        3: "دائرة الجنوب الاولى",
+        4: "دائرة الجنوب الثانية",
+        5: "دائرة الجنوب الثالثة",
+        6: "دائرة البقاع الاولى",
+        7: "دائرة البقاع الثانية",
+        8: "دائرة البقاع الثالثة",
+        9: "دائرة الشمال الاولى",
+        10: "دائرة الشمال الثانية",
+        11: "دائرة الشمال الثالثة",
+        12: "دائرة جبل لبنان الاولى",
+        13: "دائرة جبل لبنان الثانية (المتن)",
+        14: "دائرة جبل لبنان الثالثة",
+        15: "دائرة جبل لبنان الرابعة",
+    }
+
+    district_id = session.get("district_id")
+    district_name = district_names.get(district_id, "غير معروف")
+
+    return render_template(
+        "frontend/dashboard.html",
+        ballot_number=ballot_number,
+        district_name=district_name
+    )
 
 
 # ----------------------------
