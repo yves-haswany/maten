@@ -5,18 +5,39 @@
         <tr>
             <th>District</th>
             <th>Username</th>
-            <th>Action</th>
+            <th>Generate</th>
+            <th>Update Password</th>
         </tr>
 
         {% for d in districts %}
         <tr>
             <td>{{ d.name }} (ID: {{ d.id }})</td>
             <td>{{ d.username or "Not set" }}</td>
+
+            <!-- GENERATE CREDENTIALS -->
             <td>
-                <form method="POST" style="display:inline;">
+                <form method="POST">
                     <input type="hidden" name="district_id" value="{{ d.id }}">
-                    <button type="submit">
-                        Generate Credentials
+                    <button type="submit" name="action" value="generate">
+                        Generate
+                    </button>
+                </form>
+            </td>
+
+            <!-- UPDATE PASSWORD -->
+            <td>
+                <form method="POST" style="display:flex; gap:5px;">
+                    <input type="hidden" name="district_id" value="{{ d.id }}">
+
+                    <input 
+                        type="password" 
+                        name="new_password" 
+                        placeholder="New password"
+                        required
+                    >
+
+                    <button type="submit" name="action" value="update_password">
+                        Update
                     </button>
                 </form>
             </td>

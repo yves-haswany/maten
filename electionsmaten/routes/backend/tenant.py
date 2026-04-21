@@ -73,24 +73,39 @@ def view_districts():
 
     tenant = Tenant.query.get(session["tenant_id"])
 
-    # 🔥 HANDLE UPDATE
     if request.method == "POST":
         district_id = request.form.get("district_id")
+        action = request.form.get("action")  # 👈 NEW
 
         district = District.query.get(district_id)
 
         if district and district in tenant.districts:
 
-            # Generate username
-            letter = get_tenant_letter(tenant.id)
-            username = f"{tenant.id}{letter}{district.id}D"
+            # ----------------------------
+            # 1. GENERATE CREDENTIALS
+            # ----------------------------
+            if action == "generate":
+                letter = get_tenant_letter(tenant.id)
+                username = f"{tenant.id}{letter}{district.id}D"
 
-            district.username = username
-            district.password = generate_password_hash(username)  # 🔒 hashed
+                district.username = username
+                district.password = generate_password_hash(username)
+
+                flash(f"Credentials generated for District {district.id}", "success")
+
+            # ----------------------------
+            # 2. UPDATE PASSWORD
+            # ----------------------------
+            elif action == "update_password":
+                new_password = request.form.get("new_password")
+
+                if not new_password:
+                    flash("Password cannot be empty", "danger")
+                else:
+                    district.password = generate_password_hash(new_password)
+                    flash(f"Password updated for District {district.id}", "success")
 
             db.session.commit()
-
-            flash(f"Credentials set for District {district.id}", "success")
 
         return redirect(url_for("tenant.view_districts"))
 
