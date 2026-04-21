@@ -178,7 +178,7 @@ def download_results():
     writer = csv.writer(output)
 
     # Header
-    writer.writerow(["District", "Ballot Pen", "List", "Candidate", "Votes"])
+    writer.writerow(["Tenant","District", "Ballot Pen", "List", "Candidate", "Votes"])
 
     # ----------------------------
     # 1. FULL VOTES (list + candidate)
@@ -208,7 +208,9 @@ def download_results():
     )
 
     for row in full_votes:
+        tenant_id=int(row.username[0])
         writer.writerow([
+            tenant_id,
             district.id,
             row.username[-4:],
             row.list_name,
@@ -241,7 +243,9 @@ def download_results():
     )
 
     for row in list_only_votes:
+        tenant_id=int(row.username[0])
         writer.writerow([
+            tenant_id,
             district.id,
             row.username[-4:],
             row.list_name,
@@ -269,7 +273,9 @@ def download_results():
     )
 
     for row in blank_votes:
+        tenant_id=int(row.username[0])
         writer.writerow([
+            tenant_id,
             district.id,
             row.username[-4:],
             "None",
