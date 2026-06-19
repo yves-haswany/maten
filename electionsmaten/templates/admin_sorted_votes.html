@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sorted Votes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        .tables-container {
+            display: flex;
+            gap: 40px;
+        }
+
+        table {
+            width: 500px;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th, td {
+            border: 1px solid #333;
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        .back-link {
+            margin-top: 20px;
+            display: inline-block;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Vote Sorting Results</h2>
+
+<div class="tables-container">
+
+    <!-- LEFT TABLE — CANDIDATES SORTED BY VOTES -->
+    <div>
+        <h3>Candidate Ranking (Descending)</h3>
+        <table>
+            <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>List</th>
+                <th>Votes</th>
+            </tr>
+
+            {% for candidate in candidates %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ candidate.name }}</td>
+                <td>{{ candidate.list_name }}</td>
+                <td>{{ candidate.votes }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <!-- RIGHT TABLE — LISTS SORTED BY TOTAL VOTES -->
+    <div>
+        <h3>List Ranking (Descending)</h3>
+        <table>
+            <tr>
+                <th>Rank</th>
+                <th>List Name</th>
+                <th>Total Votes</th>
+            </tr>
+
+            {% for list in lists %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ list.name }}</td>
+                <td>{{ list.list_votes }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+</div>
+
+<!-- NAVIGATION & DOWNLOAD BUTTONS -->
+<a class="back-link" href="{{ url_for('backend.admin_dashboard') }}">⬅ Back to Dashboard</a>
+
+<br><br>
+
+<!-- ✅ NEW BUTTON 1: LIST TOTALS -->
+<a class="btn" href="{{ url_for('backend.download_list_totals') }}">
+    📥 Download List Totals TXT
+</a>
+
+<!-- ✅ NEW BUTTON 2: CANDIDATE TOTALS -->
+<a class="btn" href="{{ url_for('backend.download_candidate_totals') }}">
+    📥 Download Candidate Totals TXT
+</a>
+
+</body>
+</html>

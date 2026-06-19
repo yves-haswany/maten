@@ -1,0 +1,26 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<h2>Entered Electors</h2>
+
+<table>
+<tr>
+    <th>Elector ID</th>
+    <th>Time Entered</th>
+</tr>
+
+{% for e in electors %}
+<tr>
+    <td>{{ e.elector_id }}</td>
+    <td>{{ e.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+<br>
+
+<a href="{{ url_for('frontend_bp.dashboard') }}">← Back to Dashboard</a>
+
+{% endblock %}

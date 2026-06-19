@@ -1,0 +1,39 @@
+ <a href="{{ url_for('tenant.dashboard') }}">
+        <button>⬅ Back to Dashboard</button>
+    </a>
+
+    <!-- Download CSV (per district) -->
+   <a href="{{ url_for('tenant.download_all_results') }}">
+    <button>⬇ Download All Results CSV</button>
+</a>
+<table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+        <tr>
+            <th>Tenant</th>
+            <th>District</th>
+            <th>Ballot Pen</th>
+            <th>List</th>
+            <th>Candidate</th>
+            <th>Votes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for district_id, rows in results.items() %}
+            <tr>
+                <td colspan="6" style="background-color: #eee; font-weight: bold;">
+                    District {{ district_id }}
+                </td>
+            </tr>
+            {% for r in rows %}
+            <tr>
+                <td>{{ r.tenant_id }}</td>
+                <td>{{ r.district_id }}</td>
+                <td>{{ r.ballot_pen }}</td>
+                <td>{{ r.list_name or "None" }}</td>
+                <td>{{ r.candidate_name or "None" }}</td>
+                <td>{{ r.votes }}</td>
+            </tr>
+            {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Ballot Pen</title>
+</head>
+<body>
+    <h2>Create Ballot Pen</h2>
+
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    {% if success %}
+        <p style="color:green;">{{ success }}</p>
+    {% endif %}
+
+    <form method="post">
+        <label for="serial_number">Serial Number:</label>
+        <input type="text" name="serial_number" required><br><br>
+
+        <label for="user_id">Assign to User:</label>
+        <select name="user_id" required>
+            <option value="">-- Select User --</option>
+            {% for user in users %}
+                <option value="{{ user.username }}">{{ user.username }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <button type="submit">Create Ballot Pen</button>
+         <a href="{{ url_for('backend.admin_dashboard') }}" class="btn-back">Back to Admin Dashboard</a>
+
+    </form>
+</body>
+</html>
