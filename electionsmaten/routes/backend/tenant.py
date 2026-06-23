@@ -2,7 +2,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash,generate_password_hash
 
 from ... import db
-from ...models import CandidateList, Candidate, District, Tenant, Vote, Elector, BallotPen
+from ...models.tenant_models import CandidateList, Candidate, Vote,BallotPen, Elector
+from ...models.master_models import (
+    Party,
+    Tenant,
+    District,
+    User
+)
 import csv
 from io import StringIO
 from flask import Response

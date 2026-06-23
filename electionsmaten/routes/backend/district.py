@@ -1,6 +1,13 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for,Response
 from werkzeug.security import check_password_hash
-from electionsmaten.models import District,Elector,Vote,Candidate,CandidateList
+from ...models.master_models import (
+    Party,
+    Tenant,
+    District,
+    User,
+    Elector
+)
+from ... import db
 import csv
 from io import StringIO
 from sqlalchemy.orm import joinedload
@@ -53,8 +60,7 @@ def electors():
 
 from flask import render_template, request, abort
 from sqlalchemy import func
-from electionsmaten.models import Vote, Candidate, CandidateList, BallotPen, District, db
-
+from ...models.tenant_models import CandidateList, Candidate, BallotPen, Vote
 @district_bp.route("/results/<int:district_id>")
 def results(district_id):
     district = District.query.get_or_404(district_id)

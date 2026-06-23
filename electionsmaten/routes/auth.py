@@ -10,7 +10,7 @@ from flask import (
 
 from werkzeug.security import check_password_hash
 
-from ..master_models import User
+from ..models.master_models import User
 
 
 auth_bp = Blueprint(
