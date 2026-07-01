@@ -2,8 +2,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash,generate_password_hash
 
 from ... import db
-from ...models.tenant_models import CandidateList, Candidate, Vote,BallotPen, Elector
+from ...models.tenant_models import CandidateList, Candidate, Vote,BallotPenAccount, Elector
 from ...models.master_models import (
+    BallotPen,
     Party,
     Tenant,
     District,

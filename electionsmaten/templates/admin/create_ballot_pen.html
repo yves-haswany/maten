@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Upload Ballot Pens</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+
+        body{
+            font-family:Arial,sans-serif;
+            background:#f4f6f8;
+            padding:40px;
+        }
+
+        header{
+            max-width:700px;
+            margin:auto;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:20px;
+        }
+
+        .container{
+            max-width:700px;
+            margin:auto;
+            background:white;
+            padding:25px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        }
+
+        label{
+            display:block;
+            margin-top:15px;
+            margin-bottom:6px;
+            font-weight:bold;
+        }
+
+        input[type=file]{
+            width:100%;
+            padding:10px;
+            border:1px solid #ccc;
+            border-radius:8px;
+        }
+
+        button{
+            width:100%;
+            margin-top:20px;
+            padding:10px;
+            border:none;
+            border-radius:8px;
+            background:#4a90e2;
+            color:white;
+            cursor:pointer;
+            font-size:16px;
+        }
+
+        button:hover{
+            background:#357ab8;
+        }
+
+        .flash-message{
+            max-width:700px;
+            margin:10px auto;
+            padding:10px;
+            border-radius:8px;
+            background:#fff3cd;
+            border:1px solid #ffeeba;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <h1>Upload Ballot Pens</h1>
+
+    <a href="{{ url_for('admin.dashboard') }}">
+        Back
+    </a>
+
+</header>
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+{% for message in messages %}
+
+<div class="flash-message">
+    {{ message }}
+</div>
+
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="container">
+
+<form method="POST" enctype="multipart/form-data">
+
+    <label>Excel File</label>
+
+    <input
+        type="file"
+        name="file"
+        accept=".xlsx,.xls"
+        required
+    >
+
+    <small>
+        Upload the national ballot pen list for Lebanon.
+    </small>
+
+    <button type="submit">
+        Upload Ballot Pens
+    </button>
+
+</form>
+
+</div>
+
+</body>
+</html>

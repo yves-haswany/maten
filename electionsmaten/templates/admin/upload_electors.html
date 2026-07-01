@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<title>Upload Electors (Admin)</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="bg-gray-100 min-h-screen p-6">
+
+<header class="flex justify-between items-center mb-6">
+
+    <h1 class="text-3xl font-bold">
+        تنزيل لوائح الناخبين على الاراضي اللبنانية كافة
+    </h1>
+
+    <a href="{{ url_for('admin.dashboard') }}"
+       class="logout-button">
+        Back
+    </a>
+
+</header>
+
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+    {% for message in messages %}
+        <div class="flash-message">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+{% endwith %}
+
+
+<div class="form-container">
+
+<form method="POST"
+      enctype="multipart/form-data">
+
+    <!-- OPTIONAL: district filter (not required anymore) -->
+    <label>
+         اختيارالقضاء
+    </label>
+
+    <select name="district_id">
+
+        <option value="">
+            All Lebanon (no filter)
+        </option>
+
+        {% for district in districts %}
+        <option value="{{ district.id }}">
+            {{ district.name }}
+        </option>
+        {% endfor %}
+
+    </select>
+
+
+    <label>
+        Elector File
+    </label>
+
+    <input type="file"
+           name="file"
+           accept=".csv,.xlsx"
+           required>
+
+
+    <small>
+        Upload will apply globally unless a district is selected.
+    </small>
+
+    <br><br>
+
+    <button type="submit"
+            class="submit-button">
+
+        Upload Electors
+
+    </button>
+
+</form>
+
+</div>
+
+</body>
+</html>

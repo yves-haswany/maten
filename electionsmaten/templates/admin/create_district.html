@@ -1,27 +1,322 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Create District</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta charset="UTF-8">
+<title>Create District</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    padding: 40px;
+}
+
+.container {
+    max-width: 850px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+h2 { text-align: center; }
+
+.section {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+input, select {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.add-btn {
+    margin-top: 10px;
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.small-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+</style>
+
 </head>
-<body class="form-container">
 
-<h2>Create District</h2>
+<body>
 
-<form method="POST">
+<div class="container">
 
-    <div class="mb-3">
-        <label class="form-label">District Name</label>
-        <input type="text" name="name" class="form-control" placeholder="Enter district name" required>
+<h2>تسجيل دائرة</h2>
+
+<form method="POST" id="form">
+
+<label>District Code</label>
+<input type="text" name="code" required>
+
+<label>District Name</label>
+<input type="text" name="name" required>
+
+<hr>
+
+<h3>اقضية و توزيع مقاعد</h3>
+
+<div id="subdistricts"></div>
+
+<button type="button" class="add-btn" onclick="addSubdistrict()">
++ اضافة قضاء
+</button>
+
+<button type="submit" class="btn">
+حفظ المعلومات
+</button>
+<h1>الدوائر الموجودة</h1>
+
+{% if districts %}
+
+<div>
+
+    {% for d in districts %}
+
+    <div class="card">
+
+        <!-- HEADER ROW -->
+        <div class="row">
+            <div>
+                <strong>{{ d.code }}</strong> - {{ d.name }}
+            </div>
+
+            <div>
+                <!-- optional actions later -->
+                <button class="small-btn edit">View</button>
+                <button class="small-btn delete">Delete</button>
+            </div>
+        </div>
+
+        <!-- SUBDISTRICTS -->
+        {% if d.subdistricts %}
+
+            {% for sub in d.subdistricts %}
+
+                <div class="row" style="border-bottom:1px solid #eee; padding-left:10px;">
+                    <div>
+                        📍 <strong>{{ sub.name }}</strong>
+                        <small>(Seats: {{ sub.seats }})</small>
+                    </div>
+                </div>
+
+                <!-- SECTS -->
+                {% if sub.sects %}
+
+                    {% for s in sub.sects %}
+                    <div class="row" style="padding-left:30px; font-size:14px; color:#555;">
+                        <div>
+                            ▸ {{ s.name }} (Seats: {{ s.seats }})
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                {% endif %}
+
+            {% endfor %}
+
+        {% else %}
+            <div class="row" style="color:#999;">
+                لا اقضية مسجلة بعد.
+            </div>
+        {% endif %}
+
     </div>
 
-    <button type="submit" class="btn btn-primary">Create District</button>
+    {% endfor %}
 
+</div>
+
+{% else %}
+<p>لا دوائر مسجلة بعد</p>
+{% endif %}
 </form>
 
-<br>
 
-<a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+<a href="{{ url_for('admin.dashboard') }}">عودةالى لوحة التحكم</a>
+
+</div>
+
+<!-- SAFE DATA INJECTION -->
+<script id="subdistrict-data" type="application/json">
+{{ subdistricts | tojson | safe }}
+</script>
+
+<script id="sect-data" type="application/json">
+{{ sects | tojson | safe }}
+</script>
+
+<script>
+/* =========================
+   SAFE DATA PARSING
+========================= */
+
+let subdistrictOptions = [];
+let sectOptions = [];
+
+try {
+    subdistrictOptions = JSON.parse(
+        document.getElementById("subdistrict-data").textContent || "[]"
+    );
+} catch (e) {
+    subdistrictOptions = [];
+}
+
+try {
+    sectOptions = JSON.parse(
+        document.getElementById("sect-data").textContent || "[]"
+    );
+} catch (e) {
+    sectOptions = [];
+}
+
+const container = document.getElementById("subdistricts");
+
+/* =========================
+   ADD SUBDISTRICT BLOCK
+========================= */
+
+function addSubdistrict() {
+
+    const div = document.createElement("div");
+    div.className = "section";
+
+    const subOptions = subdistrictOptions.map(s =>
+        `<option value="${s.id}">${s.name}</option>`
+    ).join("");
+
+    div.innerHTML = `
+        <label>Select Subdistrict</label>
+        <select class="sub-id" required>
+            ${subOptions}
+        </select>
+
+        <input type="number" class="sub-seats" placeholder="Subdistrict seats" min="1" required>
+
+        <h4>Sects inside subdistrict</h4>
+
+        <div class="sects"></div>
+
+        <button type="button" class="add-btn" onclick="addSect(this)">
+            + زيادة طائفة
+        </button>
+
+        <button type="button" class="small-btn" onclick="this.closest('.section').remove()">
+            حذف القضاء
+        </button>
+    `;
+
+    container.appendChild(div);
+}
+
+/* =========================
+   ADD SECT BLOCK
+========================= */
+
+function addSect(btn) {
+
+    const section = btn.closest(".section");
+    const sectContainer = section.querySelector(".sects");
+
+    const sectOpts = sectOptions.map(s =>
+        `<option value="${s.id}">${s.name}</option>`
+    ).join("");
+
+    const row = document.createElement("div");
+    row.className = "row";
+
+    row.innerHTML = `
+        <select class="sect-id" required>
+            ${sectOpts}
+        </select>
+
+        <input type="number" class="sect-seats" placeholder="Seats" min="1" required>
+
+        <button type="button" class="small-btn" onclick="this.parentElement.remove()">X</button>
+    `;
+
+    sectContainer.appendChild(row);
+}
+
+/* =========================
+   FORM SERIALIZATION
+========================= */
+
+document.getElementById("form").addEventListener("submit", function(e) {
+
+    const result = [];
+
+    document.querySelectorAll(".section").forEach(section => {
+
+        const subdistrictId = section.querySelector(".sub-id")?.value;
+        const seats = section.querySelector(".sub-seats")?.value;
+
+        const sects = [];
+
+        section.querySelectorAll(".row").forEach(row => {
+            sects.push({
+                sect_id: parseInt(row.querySelector(".sect-id").value),
+                seats: parseInt(row.querySelector(".sect-seats").value)
+            });
+        });
+
+        result.push({
+            subdistrict_id: parseInt(subdistrictId),
+            seats: parseInt(seats),
+            sects: sects
+        });
+
+    });
+
+    const existing = this.querySelector('input[name="data"]');
+    if (existing) existing.remove();
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "data";
+    input.value = JSON.stringify(result);
+
+    this.appendChild(input);
+});
+</script>
 
 </body>
 </html>

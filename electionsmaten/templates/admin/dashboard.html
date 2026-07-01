@@ -1,44 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<meta charset="UTF-8">
+<title>Admin Dashboard</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+
 </head>
 
 <body class="bg-gray-100 min-h-screen p-6">
 
 <header class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Admin Dashboard</h1>
-    <a href="{{ url_for('admin.logout') }}" class="logout-button">Logout</a>
+
+    <h1 class="text-3xl font-bold">
+        Admin Dashboard
+    </h1>
+
+    <a href="{{ url_for('auth.logout') }}"
+       class="logout-button">
+        Logout
+    </a>
+
 </header>
 
 <div class="dashboard-grid">
 
-    <!-- Create Tenant -->
-    <a href="{{ url_for('admin.create_tenant') }}" class="dashboard-card">
-        <h2>Create Tenant</h2>
-        <p>Add a new tenant</p>
-    </a>
-
-    <!-- Create District -->
     <a href="{{ url_for('admin.create_district') }}" class="dashboard-card">
-        <h2>Create District</h2>
-        <p>Add a new district</p>
+        <h2>دوائر انتخابية</h2>
+        <p>دوائر و توزيع المقاعد</p>
     </a>
 
-    <!-- Manage Tenants -->
-    <a href="{{ url_for('admin.view_tenants') }}" class="dashboard-card">
-        <h2>Manage Tenants</h2>
-        <p>Edit or delete existing tenants</p>
+   <!-- <a href="{{ url_for('admin.view_districts') }}" class="dashboard-card">
+        <h2>تصحيح دوائر انتخابية</h2>
+        <p>تعديل و تصحيح الدوائر الانتخابية</p>
+    </a>-->
+
+    <a href="{{ url_for('admin.create_sect') }}" class="dashboard-card">
+        <h2>طوائف و مذاهب</h2>
+        <p>تعريف الطوائف و المذاهب</p>
     </a>
 
-    <!-- Manage Districts -->
-    <a href="{{ url_for('admin.view_districts') }}" class="dashboard-card">
-        <h2>Manage Districts</h2>
-        <p>Edit or delete existing districts</p>
+   <!-- <a href="{{ url_for('admin.view_sects') }}" class="dashboard-card">
+        <h2>تصحيح الطوائف و المذاهب</h2>
+        <p>تعديل و تصحيح الطوائف و المذاهب</p>
+    </a>-->
+
+    <a href="{{ url_for('admin.create_tenant') }}" class="dashboard-card">
+        <h2>زبائن و احزاب</h2>
+        <p>تعريف قاعدة معلومات الزبائن و الاحزاب</p>
     </a>
 
+    <!--<a href="{{ url_for('admin.view_tenants') }}" class="dashboard-card">
+        <h2>تصحيح زبائن</h2>
+        <p>تعديل و تصحيح قاعدة معلومات الزبائن و الاحزاب</p>
+    </a>-->
+
+    <a href="{{ url_for('admin.upload_electors') }}" class="dashboard-card">
+        <h2>تنزيل لوائح الناخبين</h2>
+        <p>تنزيل لوائح الناخبين من وزارة الداخلية</p>
+    </a>
+
+    <a href="{{ url_for('admin.upload_ballot_pens') }}" class="dashboard-card">
+        <h2>اقلام اقتراع</h2>
+        <p>تعريف اقلام الاقتراع</p>
+    </a>
+
+    <!--<a href="{{ url_for('admin.view_ballot_pens') }}" class="dashboard-card">
+        <h2>تصحيح اقلام اقتراع</h2>
+        <p>تعديل و تصحيح اقلام الاقتراع</p>
+    </a>-->
+
+    <!-- ✅ FIXED: now INSIDE grid -->
+
+    <a href="{{ url_for('admin.create_subdistrict') }}" class="dashboard-card">
+        <h2>الأقضية</h2>
+        <p>تعريف الأقضية اللبنانية</p>
+    </a>
+
+    <!--<a href="{{ url_for('admin.view_subdistricts') }}" class="dashboard-card">
+        <h2>تصحيح الأقضية</h2>
+        <p>تعديل و تصحيح الأقضية</p>
+    </a>-->
 
 </div>
 

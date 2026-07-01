@@ -1,99 +1,199 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Manage Tenants</title>
 
-<title>Create Tenant</title>
+<style>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+body{
+    font-family:Arial;
+    background:#f4f6f8;
+    padding:40px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+label{
+    display:block;
+    margin-top:10px;
+    margin-bottom:5px;
+    font-weight:bold;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+}
+
+.checkbox-group{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:10px;
+}
+
+button{
+    width:100%;
+    padding:10px;
+    margin-top:15px;
+    border:none;
+    border-radius:8px;
+    background:#4a90e2;
+    color:white;
+    cursor:pointer;
+}
+
+/* CARD STYLE LIKE SECT PAGE */
+.card{
+    border:1px solid #ddd;
+    padding:15px;
+    margin-top:15px;
+    border-radius:10px;
+    background:#fff;
+}
+
+.row{
+    display:flex;
+    gap:10px;
+}
+
+.row input{
+    flex:1;
+}
+
+.small-btn{
+    padding:8px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    width:auto;
+}
+
+.edit{
+    background:#28a745;
+    color:white;
+}
+
+.delete{
+    background:#dc3545;
+    color:white;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+}
+
+</style>
 
 </head>
 
 <body>
 
-<div class="form-container">
+<div class="container">
 
-<h2>Create Tenant</h2>
+<h1>تعريف زبون</h1>
 
+<!-- CREATE -->
 <form method="POST">
 
-<div class="form-group">
+<label>الحزب او المرشح</label>
+<input type="text" name="party" required>
 
-<label>Party Name</label>
+<label>اسم الاستخدام للزبون</label>
+<input type="text" name="username" required>
 
-<input
-type="text"
-name="party"
-placeholder="Enter party name"
-required>
+<label>كلمة المرور</label>
+<input type="password" name="password" required>
 
-</div>
-
-
-<div class="form-group">
-
-<label>Tenant Username</label>
-
-<input
-type="text"
-name="username"
-placeholder="Enter tenant username"
-required>
-
-</div>
-
-
-<div class="form-group">
-
-<label>Tenant Password</label>
-
-<input
-type="password"
-name="password"
-placeholder="Enter password"
-required>
-
-</div>
-
-
-<div class="form-group">
-
-<label>Assign Districts</label>
+<h4>تعيين الدوائر</h4>
 
 <div class="checkbox-group">
 
 {% for district in districts %}
-
-<label class="checkbox-item">
-
-<input
-type="checkbox"
-name="districts"
-value="{{ district.id }}">
-
+<label>
+<input type="checkbox" name="districts" value="{{ district.id }}">
 {{ district.name }}
-
 </label>
-
 {% endfor %}
 
 </div>
 
-</div>
-
-
-<button type="submit">Create Tenant</button>
+<button type="submit">حفظ معلومات الزبون</button>
 
 </form>
 
+<hr>
 
-<a href="{{ url_for('admin.dashboard') }}" class="back-link">
+<h1>لائحة الزبائن</h1>
 
-Back to Dashboard
+{% for tenant in tenants %}
 
-</a>
+<div class="card">
+
+<form method="POST"
+      action="{{ url_for('admin.edit_tenant', tenant_id=tenant.id) }}">
+
+<div class="row">
+
+    <input type="text" name="party" value="{{ tenant.party }}">
+    <input type="text" name="username" value="{{ tenant.username }}">
 
 </div>
 
-</body>
+<h4>Districts</h4>
 
+<div class="checkbox-group">
+
+{% for district in districts %}
+<label>
+<input type="checkbox"
+       name="districts"
+       value="{{ district.id }}"
+       {% if district in tenant.districts %}checked{% endif %}>
+{{ district.name }}
+</label>
+{% endfor %}
+
+</div>
+
+<button class="small-btn edit" type="submit">
+Update
+</button>
+
+</form>
+
+<form method="POST"
+      action="{{ url_for('admin.delete_tenant', tenant_id=tenant.id) }}">
+
+<button class="small-btn delete"
+        type="submit"
+        onclick="return confirm('Delete tenant?')">
+Delete
+</button>
+
+</form>
+
+</div>
+
+{% endfor %}
+<a href="{{ url_for('admin.dashboard') }}">عودة الى الصفحة الرئيسية</a>
+</div>
+
+</body>
 </html>
