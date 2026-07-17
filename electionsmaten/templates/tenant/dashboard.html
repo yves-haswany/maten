@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tenant Dashboard</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="bg-gray-100 min-h-screen p-6">
+
+<header class="flex justify-between items-center mb-6">
+<h1 class="text-3xl font-bold">Tenant Dashboard</h1>
+
+<a href="{{ url_for('auth.logout') }}" class="logout-button">
+Logout
+</a>
+</header>
+
+<div class="dashboard-grid">
+
+<a href="{{ url_for('tenant.view_districts') }}" class="dashboard-card">
+<h2>View My Districts</h2>
+<p>See the districts your party participates in</p>
+</a>
+
+<a href="{{ url_for('tenant.create_list') }}" class="dashboard-card">
+<h2>Create Candidate List</h2>
+<p>Create a new election list for one of your districts</p>
+</a>
+
+{#<a href="{{ url_for('tenant.view_lists') }}" class="dashboard-card">
+<h2>Manage Candidate Lists</h2>
+<p>View, edit, or delete your lists</p>
+</a>
+
+<a href="{{ url_for('tenant.create_candidate') }}" class="dashboard-card">
+<h2>Create Candidate</h2>
+<p>Add a candidate to one of your lists</p>
+</a>
+
+<a href="{{ url_for('tenant.view_candidates') }}" class="dashboard-card">
+<h2>Manage Candidates</h2>
+<p>View, edit, or delete candidates</p>
+</a>
+
+<a href="{{ url_for('tenant.download_results') }}" class="dashboard-card">
+<h2>Export Results</h2>
+<p>Download voting results as a CSV file</p>
+</a>#}
+<a href="{{ url_for('tenant.manage_lists') }}" class="dashboard-card">
+<h2>Manage Lists & Candidates</h2>
+<p>Manage lists and their candidates in one place</p>
+<a href="{{ url_for('tenant.tenant_results') }}" class="dashboard-card">
+<h2>View Results</h2>
+<p>See voting results by district and download CSV reports</p>
+<a href="{{ url_for('tenant.view_electors') }}" class="dashboard-card">
+<h2>View Electors info</h2>
+<p>Check the elector info for this tenant in all the districts they are participating in</p>
+</a>
+<a href="{{ url_for('tenant.view_districts') }}" 
+   class="dashboard-card">
+
+<h2>District Credentials</h2>
+
+<p>
+Create and manage district-level access credentials
+</p>
+
+</a>
+<a href="{{ url_for('tenant.manage_ballot_pen_credentials') }}" 
+   class="dashboard-card">
+
+<h2>Ballot Pen Credentials</h2>
+
+<p>
+Create and manage ballot pen users for your districts
+</p>
+
+</a>
+</div>
+
+</body>
+</html>

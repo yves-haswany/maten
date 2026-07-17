@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Manage Tenants</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    background:#f4f6f8;
+    padding:40px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+label{
+    display:block;
+    margin-top:10px;
+    margin-bottom:5px;
+    font-weight:bold;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+}
+
+.checkbox-group{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:10px;
+}
+
+button{
+    width:100%;
+    padding:10px;
+    margin-top:15px;
+    border:none;
+    border-radius:8px;
+    background:#4a90e2;
+    color:white;
+    cursor:pointer;
+}
+
+/* CARD STYLE LIKE SECT PAGE */
+.card{
+    border:1px solid #ddd;
+    padding:15px;
+    margin-top:15px;
+    border-radius:10px;
+    background:#fff;
+}
+
+.row{
+    display:flex;
+    gap:10px;
+}
+
+.row input{
+    flex:1;
+}
+
+.small-btn{
+    padding:8px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    width:auto;
+}
+
+.edit{
+    background:#28a745;
+    color:white;
+}
+
+.delete{
+    background:#dc3545;
+    color:white;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>تعريف زبون</h1>
+
+<!-- CREATE -->
+<form method="POST">
+
+<label>الحزب او المرشح</label>
+<input type="text" name="party" required>
+
+<label>اسم الاستخدام للزبون</label>
+<input type="text" name="username" required>
+
+<label>كلمة المرور</label>
+<input type="password" name="password" required>
+
+<h4>تعيين الدوائر</h4>
+
+<div class="checkbox-group">
+
+{% for district in districts %}
+<label>
+<input type="checkbox" name="districts" value="{{ district.id }}">
+{{ district.name }}
+</label>
+{% endfor %}
+
+</div>
+
+<button type="submit">حفظ معلومات الزبون</button>
+
+</form>
+
+<hr>
+
+<h1>لائحة الزبائن</h1>
+
+{% for tenant in tenants %}
+
+<div class="card">
+
+<form method="POST"
+      action="{{ url_for('admin.edit_tenant', tenant_id=tenant.id) }}">
+
+<div class="row">
+
+    <input type="text" name="party" value="{{ tenant.party }}">
+    <input type="text" name="username" value="{{ tenant.username }}">
+
+</div>
+
+<h4>Districts</h4>
+
+<div class="checkbox-group">
+
+{% for district in districts %}
+<label>
+<input type="checkbox"
+       name="districts"
+       value="{{ district.id }}"
+       {% if district in tenant.districts %}checked{% endif %}>
+{{ district.name }}
+</label>
+{% endfor %}
+
+</div>
+
+<button class="small-btn edit" type="submit">
+Update
+</button>
+
+</form>
+
+<form method="POST"
+      action="{{ url_for('admin.delete_tenant', tenant_id=tenant.id) }}">
+
+<button class="small-btn delete"
+        type="submit"
+        onclick="return confirm('Delete tenant?')">
+Delete
+</button>
+
+</form>
+
+</div>
+
+{% endfor %}
+<a href="{{ url_for('admin.dashboard') }}">عودة الى الصفحة الرئيسية</a>
+</div>
+
+</body>
+</html>

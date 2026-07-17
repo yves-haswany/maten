@@ -1,34 +1,52 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, redirect, url_for
 import os
 
-db = SQLAlchemy()
+from .db.master_db import db, init_master_db
+from .services.tenant_service import init_tenant_db_registry
 
 
 def create_app():
+
     app = Flask(__name__)
-    app.secret_key = os.urandom(24)
 
-    # Database configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///electors.db"
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config["SECRET_KEY"] = "devsecret"
 
-    # Ensure exports folder exists
-    os.makedirs("exports", exist_ok=True)
+    app.config["MASTER_DATABASE_URL"] = "sqlite:///maten_master.db"
 
-    # Initialize Database
-    db.init_app(app)
+    # -------------------------------------------------
+    # 1. INIT MASTER DB
+    # -------------------------------------------------
+    init_master_db(app)
 
-    # Create Tables
+    # -------------------------------------------------
+    # 2. IMPORT MODELS (IMPORTANT BEFORE MIGRATION/QUERY)
+    # -------------------------------------------------
+    from .models import master_models
+
+    # -------------------------------------------------
+    # 3. CREATE TABLES (ONLY FOR DEV)
+    # -------------------------------------------------
     with app.app_context():
-        from . import models
-        db.create_all()
+        db.create_all()   # ⚠️ only for dev/testing
 
-    # ✅ Register Blueprints (NEW STRUCTURE)
-    from .routes.frontend import frontend
-    from .routes.backend import backend
+    # -------------------------------------------------
+    # 4. NOW SAFE TO QUERY TENANTS
+    # -------------------------------------------------
+    init_tenant_db_registry(app)
 
-    app.register_blueprint(frontend)
-    app.register_blueprint(backend)
+    # -------------------------------------------------
+    # BLUEPRINTS
+    # -------------------------------------------------
+    from .routes.auth import auth_bp
+    from .routes.backend.admin import admin_bp
+    from .routes.backend.tenant import tenant_bp
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(tenant_bp)
+
+    @app.route("/")
+    def index():
+        return redirect(url_for("auth.login"))
 
     return app

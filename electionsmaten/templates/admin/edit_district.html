@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<title>Edit District</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    padding: 40px;
+}
+
+.container {
+    max-width: 850px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+h2 { text-align: center; }
+
+.section {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+input {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+}
+
+.add-btn {
+    margin-top: 10px;
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.small-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 8px;
+    border-radius: 6px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Edit District</h2>
+
+<form method="POST" id="form">
+
+<label>District Code</label>
+<input type="text" name="code" value="{{ district.code }}" required>
+
+<label>District Name</label>
+<input type="text" name="name" value="{{ district.name }}" required>
+
+<hr>
+
+<h3>Subdistricts</h3>
+
+<div id="subdistricts"></div>
+
+<button type="button" class="add-btn" onclick="addSubdistrict()">
++ Add Subdistrict
+</button>
+
+<button type="submit" class="btn">
+Save Changes
+</button>
+
+</form>
+
+<a class="back-link" href="{{ url_for('admin.view_districts') }}">
+Back
+</a>
+
+</div>
+
+<script>
+const container = document.getElementById("subdistricts");
+
+/* -----------------------------
+   EXISTING DATA FROM BACKEND
+------------------------------*/
+const existing = JSON.parse(
+    document.getElementById("existing-data").textContent
+);
+
+/* -----------------------------
+   INIT
+------------------------------*/
+function init() {
+    if (!existing || existing.length === 0) {
+        addSubdistrict();
+        return;
+    }
+
+    existing.forEach(sub => {
+        addSubdistrict(sub);
+    });
+}
+
+function addSubdistrict(data = null) {
+
+    const div = document.createElement("div");
+    div.className = "section";
+
+    div.innerHTML = `
+        <input type="text" class="sub-name" placeholder="Subdistrict name" value="${data?.name || ''}" required>
+        <input type="number" class="sub-seats" placeholder="Total seats" min="1" value="${data?.seats || ''}" required>
+
+        <h4>Sects inside subdistrict</h4>
+
+        <div class="sects"></div>
+
+        <button type="button" class="add-btn" onclick="addSect(this)">
+            + Add Sect
+        </button>
+
+        <button type="button" class="small-btn" onclick="this.parentElement.remove()">
+            Remove Subdistrict
+        </button>
+    `;
+
+    container.appendChild(div);
+
+    /* load existing sects */
+    if (data && data.sects) {
+        const sectContainer = div.querySelector(".sects");
+
+        data.sects.forEach(s => {
+            const row = document.createElement("div");
+            row.className = "row";
+
+            row.innerHTML = `
+                <input type="text" class="sect-name" value="${s.name}" placeholder="Sect name" required>
+                <input type="number" class="sect-seats" value="${s.seats}" placeholder="Seats" min="1" required>
+                <button type="button" class="small-btn" onclick="this.parentElement.remove()">X</button>
+            `;
+
+            sectContainer.appendChild(row);
+        });
+    }
+}
+
+function addSect(btn) {
+
+    const section = btn.closest(".section");
+    const sectContainer = section.querySelector(".sects");
+
+    const row = document.createElement("div");
+    row.className = "row";
+
+    row.innerHTML = `
+        <input type="text" class="sect-name" placeholder="Sect name" required>
+        <input type="number" class="sect-seats" placeholder="Seats" min="1" required>
+        <button type="button" class="small-btn" onclick="this.parentElement.remove()">X</button>
+    `;
+
+    sectContainer.appendChild(row);
+}
+
+/* -----------------------------
+   CONVERT TO JSON ON SUBMIT
+------------------------------*/
+document.getElementById("form").addEventListener("submit", function(e) {
+
+    const subdistricts = [];
+
+    document.querySelectorAll(".section").forEach(section => {
+
+        const name = section.querySelector(".sub-name").value;
+        const seats = section.querySelector(".sub-seats").value;
+
+        const sects = [];
+
+        section.querySelectorAll(".row").forEach(row => {
+
+            const sName = row.querySelector(".sect-name").value;
+            const sSeats = row.querySelector(".sect-seats").value;
+
+            sects.push({
+                name: sName,
+                seats: parseInt(sSeats)
+            });
+
+        });
+
+        subdistricts.push({
+            name: name,
+            seats: parseInt(seats),
+            sects: sects
+        });
+
+    });
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "data";
+    input.value = JSON.stringify(subdistricts);
+
+    this.appendChild(input);
+});
+
+init();
+</script>
+
+</body>
+
+</html>

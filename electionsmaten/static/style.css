@@ -1,109 +1,196 @@
-/* ---- Global Reset ---- */
-* {
+
+/* =========================
+   BASE / GLOBAL
+========================= */
+
+body {
     margin: 0;
-    padding: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+}
+
+a {
+    text-decoration: none;
+}
+
+/* =========================
+   LAYOUT CONTAINER (GLOBAL)
+========================= */
+
+.container {
+    max-width: 850px;
+    margin: 40px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+/* =========================
+   TYPOGRAPHY
+========================= */
+
+h1, h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.header-title {
+    font-size: 50px;
+    font-weight: bold;
+    text-align: center;
+    direction: rtl;
+}
+
+/* =========================
+   FORMS (GLOBAL SAFE)
+========================= */
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
     box-sizing: border-box;
 }
 
-/* ---- Page Layout ---- */
-body {
-    font-family: Arial, sans-serif;
+label {
+    display: block;
+    margin: 10px 0 6px;
+    font-weight: bold;
+}
+
+/* =========================
+   BUTTON SYSTEM
+========================= */
+
+.btn-primary {
+    width: 100%;
     padding: 10px;
-}
-
-/* ---- Container for Form ---- */
-.form-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    margin-top: 40px;
-}
-
-/* ---- Titles ---- */
-h1, h2 {
-    margin: 10px 0;
-    text-align: center;
-}
-
-/* ---- Form Style ---- */
-form {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-
-
-    /* Fully responsive width */
-    width: 100%;
-    max-width: 400px; /* Prevents growing too large on desktops */
-}
-
-/* ---- Input Fields ---- */
-input[type="text"],
-input[type="password"] {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    font-size: 1rem;
-}
-
-/* ---- Buttons ---- */
-button {
-    width: 100%;
-    padding: 12px;
-    background-color: #4285f4;
+    background: #4a90e2;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 1rem;
 }
 
-button:hover {
-    background-color: #357ae8;
+.btn-primary:hover {
+    background: #357bd8;
 }
 
-/* ---- Error Text ---- */
-p {
-    color: red;
-    font-weight: bold;
+.small-btn {
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+}
+
+.edit { background: #28a745; }
+.delete { background: #dc3545; }
+
+/* =========================
+   CARDS (LIST UI)
+========================= */
+
+.card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+}
+
+/* =========================
+   FLEX HELPERS
+========================= */
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+/* =========================
+   LOGIN
+========================= */
+
+.login-container {
+    max-width: 400px;
+    margin: 80px auto;
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* =========================
+   FORM PAGE (CREATE PAGES)
+========================= */
+
+.form-container {
+    max-width: 420px;
+    margin: 80px auto;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* =========================
+   DASHBOARD
+========================= */
+
+.dashboard-container {
+    max-width: 1100px;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 25px;
+}
+
+.dashboard-card {
+    background: white;
+    padding: 1.8rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     text-align: center;
+    transition: 0.2s;
 }
 
-/* ---- Responsive Breakpoints ---- */
-
-/* Tablets (bigger screens) */
-@media (min-width: 600px) {
-    form {
-        max-width: 450px;
-        padding: 25px;
-    }
-
-    input[type="text"],
-    input[type="password"],
-    button {
-        font-size: 1.05rem;
-        padding: 14px;
-    }
+.dashboard-card:hover {
+    transform: translateY(-5px);
 }
 
-/* Desktop screens */
-@media (min-width: 900px) {
-    form {
-        max-width: 500px;
-        padding: 30px;
-    }
+/* =========================
+   UTILITIES
+========================= */
 
-    h1, h2 {
-        font-size: 1.8rem;
-    }
+.hidden {
+    display: none;
+}
 
-    button {
-        font-size: 1.1rem;
-        padding: 15px;
-    }
+.back-link {
+    display: block;
+    margin-top: 20px;
+    text-align: center;
+    color: #2563eb;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.logout-button {
+    background: #ef4444;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
 }

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tenants</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<h2>Tenants</h2>
+
+<table border="1" cellpadding="10">
+    <thead>
+        <tr>
+            <th>Tenant Name</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for tenant in tenants %}
+        <tr>
+            <td>{{ tenant.username }}</td>
+
+            <td>
+
+                <a href="{{ url_for('admin.edit_tenant', tenant_id=tenant.id) }}">
+                    <button>Edit</button>
+                </a>
+
+                <form action="{{ url_for('admin.delete_tenant', tenant_id=tenant.id) }}"
+                      method="POST"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this tenant?');">
+
+                    <button type="submit">Delete</button>
+
+                </form>
+
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+
+</table>
+
+<br>
+
+<a href="{{ url_for('admin.dashboard') }}">Back to Dashboard</a>
+
+</body>
+</html>

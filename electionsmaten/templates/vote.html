@@ -1,25 +1,7 @@
 <form id="vote-form">
   <div class="container">
-
-    <!-- LEFT TABLE - Candidates -->
-    <div>
-        <h3>Candidates</h3>
-        <table id="candidate-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Party</th>
-                    <th>Select</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="3">Select a list to load candidates.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
+   
+    
     <!-- RIGHT TABLE - Lists -->
     <div>
         <h3>Select a List</h3>
@@ -42,6 +24,25 @@
             </tbody>
         </table>
     </div>
+    <!-- LEFT TABLE - Candidates -->
+    <div>
+        <h3>Candidates</h3>
+        <table id="candidate-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Party</th>
+                    <th>Select</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="3">Select a list to load candidates.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
 
     <button type="submit">Submit Vote</button>
     <a href="{{ url_for('frontend.dashboard') }}">Back to user dashboard</a>

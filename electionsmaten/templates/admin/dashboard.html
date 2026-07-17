@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<title>Admin Dashboard</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body class="bg-gray-100 min-h-screen p-6">
+
+<header class="flex justify-between items-center mb-6">
+
+    <h1 class="text-3xl font-bold">
+        لوحة التحكم الادارية
+    </h1>
+
+    <a href="{{ url_for('auth.logout') }}"
+       class="logout-button">
+        الخروج
+    </a>
+
+</header>
+
+<div class="dashboard-grid">
+
+    <a href="{{ url_for('admin.create_district') }}" class="dashboard-card">
+        <h2>دوائر انتخابية</h2>
+        <p>دوائر و توزيع المقاعد</p>
+    </a>
+
+   <!-- <a href="{{ url_for('admin.view_districts') }}" class="dashboard-card">
+        <h2>تصحيح دوائر انتخابية</h2>
+        <p>تعديل و تصحيح الدوائر الانتخابية</p>
+    </a>-->
+
+    <a href="{{ url_for('admin.create_sect') }}" class="dashboard-card">
+        <h2>طوائف و مذاهب</h2>
+        <p>تعريف الطوائف و المذاهب</p>
+    </a>
+
+   <!-- <a href="{{ url_for('admin.view_sects') }}" class="dashboard-card">
+        <h2>تصحيح الطوائف و المذاهب</h2>
+        <p>تعديل و تصحيح الطوائف و المذاهب</p>
+    </a>-->
+
+    <a href="{{ url_for('admin.create_tenant') }}" class="dashboard-card">
+        <h2>زبائن و احزاب</h2>
+        <p>تعريف قاعدة معلومات الزبائن و الاحزاب</p>
+    </a>
+
+    <!--<a href="{{ url_for('admin.view_tenants') }}" class="dashboard-card">
+        <h2>تصحيح زبائن</h2>
+        <p>تعديل و تصحيح قاعدة معلومات الزبائن و الاحزاب</p>
+    </a>-->
+
+    <a href="{{ url_for('admin.upload_electors') }}" class="dashboard-card">
+        <h2>تنزيل لوائح الناخبين</h2>
+        <p>تنزيل لوائح الناخبين من وزارة الداخلية</p>
+    </a>
+
+    <a href="{{ url_for('admin.upload_ballot_pens') }}" class="dashboard-card">
+        <h2>اقلام اقتراع</h2>
+        <p>تعريف اقلام الاقتراع</p>
+    </a>
+
+    <a href="{{ url_for('admin.view_ballot_pens') }}" class="dashboard-card">
+        <h2>تصحيح اقلام اقتراع</h2>
+        <p>تعديل و تصحيح اقلام الاقتراع</p>
+    </a>
+
+    <!-- ✅ FIXED: now INSIDE grid -->
+
+    <a href="{{ url_for('admin.create_subdistrict') }}" class="dashboard-card">
+        <h2>الأقضية</h2>
+        <p>تعريف الأقضية اللبنانية</p>
+    </a>
+
+    <!--<a href="{{ url_for('admin.view_subdistricts') }}" class="dashboard-card">
+        <h2>تصحيح الأقضية</h2>
+        <p>تعديل و تصحيح الأقضية</p>
+    </a>-->
+        <!-- =========================
+         POLLING CENTERS
+    ========================== -->
+
+    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
+       class="dashboard-card">
+
+        <h2>مراكز الاقتراع</h2>
+
+        <p>
+            تعريف و إدارة مراكز الاقتراع
+        </p>
+
+    </a>-->
+
+
+    <!-- =========================
+         POLLING ROOMS
+    ========================== -->
+
+    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
+       class="dashboard-card">
+
+        <h2>غرف مراكز الاقتراع</h2>
+
+        <p>
+            إدارة غرف كل مركز اقتراع
+        </p>
+
+    </a>-->
+
+
+    <!-- =========================
+         BALLOT PEN ASSIGNMENT
+    ========================== -->
+
+    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
+       class="dashboard-card">
+
+        <h2>توزيع أقلام الاقتراع</h2>
+
+        <p>
+            ربط الأقلام بالغرف داخل مراكز الاقتراع
+        </p>
+
+    </a>-->
+    <a href="{{ url_for('admin.view_electors') }}" class="dashboard-card">
+    عرض الناخبين
+</a>
+
+</div>
+
+</body>
+</html>

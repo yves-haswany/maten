@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>رفع أقلام الاقتراع</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+
+body{
+    direction: rtl;
+    text-align: right;
+}
+
+.upload-container{
+    max-width:700px;
+    margin:40px auto;
+    background:#fff;
+    padding:30px;
+    border-radius:10px;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+
+.upload-container h2{
+    margin-bottom:25px;
+}
+
+.upload-container label{
+    display:block;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.upload-container input[type=file]{
+    width:100%;
+    margin-bottom:20px;
+}
+
+.upload-container small{
+    display:block;
+    line-height:1.8;
+    margin-bottom:25px;
+}
+
+header{
+    direction:rtl;
+}
+
+</style>
+
+</head>
+
+<body class="bg-gray-100 min-h-screen p-6">
+
+<header class="flex justify-between items-center mb-6">
+
+    <h1 class="text-3xl font-bold">
+
+        رفع أقلام الاقتراع
+
+    </h1>
+
+    <a href="{{ url_for('admin.dashboard') }}"
+       class="logout-button">
+
+        رجوع
+
+    </a>
+
+</header>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+
+<div class="flash-message">
+
+    {{ message }}
+
+</div>
+
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="upload-container">
+
+    <h2>
+
+        تنزيل ملف أقلام الاقتراع
+
+    </h2>
+
+    <form method="POST"
+          enctype="multipart/form-data">
+
+        <label>
+
+            اختر ملف Excel
+
+        </label>
+
+        <input
+            type="file"
+            name="ballot_pens_file"
+            accept=".xls,.xlsx"
+            required
+        >
+
+        <small>
+
+            يجب أن يحتوي الملف على الأعمدة التالية:
+
+            <br><br>
+
+            <strong>Da2ira</strong> → الدائرة<br>
+            <strong>Kazaa</strong> → القضاء<br>
+            <strong>Balda</strong> → البلدة<br>
+            <strong>Markaz</strong> → مركز الاقتراع<br>
+            <strong>ChamberNb</strong> → رقم الغرفة<br>
+            <strong>KalamNb</strong> → رقم القلم<br>
+            <strong>Gender</strong> → الجنس<br>
+            <strong>From register</strong> → من سجل<br>
+            <strong>To register</strong> → إلى سجل<br>
+            <strong>Sect</strong> → الطائفة
+
+            <br><br>
+
+            <strong>سيتم تجاهل الأعمدة التالية:</strong>
+
+            <br>
+
+            Mouhafaza، MarkazId، UnWeb
+
+        </small>
+
+        <button
+            type="submit"
+            class="submit-button">
+
+            رفع الملف
+
+        </button>
+
+    </form>
+
+</div>
+
+</body>
+
+</html>

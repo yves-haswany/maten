@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Candidate Lists</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="table-container">
+
+<h2>Candidate Lists</h2>
+
+<a href="{{ url_for('tenant.create_list') }}" class="create-button">
+Create New List
+</a>
+
+<table>
+
+<tr>
+<th>List Name</th>
+<th>District</th>
+<th>Actions</th>
+</tr>
+
+{% for list in lists %}
+
+<tr>
+
+<td>{{ list.name }}</td>
+
+<td>{{ list.district.name }}</td>
+
+<td>
+
+<a href="{{ url_for('tenant.edit_list', list_id=list.id) }}">
+Edit
+</a>
+
+|
+
+<a href="{{ url_for('tenant.delete_list', list_id=list.id) }}"
+onclick="return confirm('Delete this list and all its candidates?')">
+Delete
+</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+<br>
+
+<a href="{{ url_for('tenant.dashboard') }}" class="back-link">
+Back to Dashboard
+</a>
+
+</div>
+
+</body>
+</html>

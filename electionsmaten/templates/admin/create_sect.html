@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Manage Sects</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    background:#f4f6f8;
+    padding:40px;
+}
+
+.container{
+    max-width:800px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+input, select{
+    width:100%;
+    padding:10px;
+    margin-bottom:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+}
+
+button{
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#4a90e2;
+    color:white;
+    cursor:pointer;
+}
+
+.card{
+    border:1px solid #ddd;
+    padding:15px;
+    margin-top:15px;
+    border-radius:10px;
+}
+
+.row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid #eee;
+}
+
+.small-btn{
+    padding:8px 10px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.delete{ background:#dc3545; color:white; }
+.edit{ background:#28a745; color:white; }
+
+.hidden{
+    display:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>تعريف مذهب</h1>
+
+<!-- CREATE -->
+<form method="POST">
+
+    <label>الطائفة</label>
+    <select name="religion">
+        <option value="مسيحي">مسيحي</option>
+        <option value="مسلم">مسلم</option>
+        <option value="مختلف">مختلف</option>
+    </select>
+
+    <label>اسم المذهب</label>
+    <input type="text" name="name" required>
+
+    <button type="submit">حفظ المذهب</button>
+
+</form>
+
+<hr>
+
+<h1>لائحة المذاهب</h1>
+
+<!-- FILTER -->
+<label>Select Sect</label>
+<select id="sectSelector" onchange="loadSect()">
+
+    <option value="all">-- All Sects --</option>
+
+    {% for sect in sects %}
+        <option
+            value="{{ sect.id }}"
+            data-name="{{ sect.name }}"
+            data-religion="{{ sect.religion }}"
+        >
+            {{ sect.name }} ({{ sect.religion }})
+        </option>
+    {% endfor %}
+
+</select>
+
+<!-- LIST VIEW -->
+<div id="listView" class="card"></div>
+
+<!-- EDIT PANEL -->
+<div id="editor" class="card hidden">
+
+    <form method="POST" id="editForm">
+
+        <input type="hidden" name="sect_id" id="sect_id">
+
+        <label>Name</label>
+        <input type="text" name="name" id="sect_name">
+
+        <label>Religion</label>
+        <select name="religion" id="sect_religion">
+            <option value="مسيحي">مسيحي</option>
+            <option value="مسلم">مسلم</option>
+            <option value="مختلف">مختلف</option>
+        </select>
+
+        <button class="small-btn edit" type="submit">
+            تحديث
+        </button>
+
+    </form>
+
+    <form method="POST" id="deleteForm">
+        <button class="small-btn delete" type="submit">
+            الغاء 
+        </button>
+    </form>
+
+</div>
+
+<a href="{{ url_for('admin.dashboard') }}">عودة الى الصفحة الرئيسية</a>
+
+</div>
+
+<!-- ✅ SAFE DATA FROM FLASK -->
+<script id="sects-data" type="application/json">
+{{ sects | tojson }}
+</script>
+
+<script>
+
+// =========================
+// SAFE LOAD
+// =========================
+const sects = JSON.parse(
+    document.getElementById("sects-data").textContent || "[]"
+);
+
+// =========================
+// FLASK SAFE ROUTES (FIX)
+// =========================
+const editBase = "/admin/sect/edit/";
+const deleteBase = "/admin/sect/delete/";
+
+// =========================
+// ELEMENTS
+// =========================
+const select = document.getElementById("sectSelector");
+const editor = document.getElementById("editor");
+const listView = document.getElementById("listView");
+
+// =========================
+// INIT
+// =========================
+window.onload = function () {
+    select.value = "all";
+    renderAll();
+};
+
+// =========================
+// ON CHANGE
+// =========================
+function loadSect() {
+    const id = select.value;
+
+    if (id === "all") {
+        renderAll();
+    } else {
+        renderSingle(id);
+    }
+}
+
+// =========================
+// ALL SECTS
+// =========================
+function renderAll() {
+
+    editor.classList.add("hidden");
+
+    let html = "<h3>All Sects</h3>";
+
+    sects.forEach(sect => {
+        html += `
+            <div class="row">
+                <div>
+                    <strong>${sect.name}</strong> - ${sect.religion}
+                </div>
+            </div>
+        `;
+    });
+
+    listView.innerHTML = html;
+}
+
+// =========================
+// SINGLE SECT (EDIT MODE)
+// =========================
+function renderSingle(id) {
+
+    const option = select.options[select.selectedIndex];
+
+    listView.innerHTML = "";
+    editor.classList.remove("hidden");
+
+    document.getElementById("sect_id").value = id;
+    document.getElementById("sect_name").value = option.dataset.name;
+    document.getElementById("sect_religion").value = option.dataset.religion;
+
+    // ✅ FIXED ROUTES
+    document.getElementById("editForm").action = editBase + id;
+    document.getElementById("deleteForm").action = deleteBase + id;
+}
+
+// =========================
+// CLICK HELP
+// =========================
+function selectSect(id) {
+    select.value = id;
+    renderSingle(id);
+}
+
+</script>
+
+</body>
+</html>

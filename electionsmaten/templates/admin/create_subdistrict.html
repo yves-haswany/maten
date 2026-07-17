@@ -1,0 +1,175 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<div class="container">
+
+<h1>تعريف قضاء</h1>
+
+<!-- =========================
+     CREATE
+========================= -->
+<form method="POST">
+
+    <label>اسم القضاء</label>
+    <input type="text" name="name" required>
+
+    <label>معلومات اضافية</label>
+    <textarea name="description" rows="3"></textarea>
+
+    <button type="submit">
+        حفظ معلومات القضاء
+    </button>
+
+</form>
+
+<hr>
+
+<h1>لائحة الاقضية</h1>
+
+<!-- =========================
+     SELECTOR (LIKE SECTS)
+========================= -->
+<label>اختر قضاء</label>
+
+<select id="subdistrictSelector" onchange="loadSubdistrict()">
+
+    <option value="all">-- جميع الاقضية --</option>
+
+    {% for subdistrict in subdistricts %}
+        <option
+            value="{{ subdistrict.id }}"
+            data-name="{{ subdistrict.name }}"
+            data-description="{{ subdistrict.description }}"
+        >
+            {{ subdistrict.name }}
+        </option>
+    {% endfor %}
+
+</select>
+
+<!-- =========================
+     LIST VIEW
+========================= -->
+<div id="listView" class="card"></div>
+
+<!-- =========================
+     EDIT PANEL
+========================= -->
+<div id="editor" class="card hidden">
+
+    <form method="POST" id="editForm">
+
+        <input type="hidden" name="name" id="name">
+
+        <label>اسم القضاء</label>
+        <input type="text" id="edit_name" name="name">
+
+        <label>وصف</label>
+        <textarea id="edit_description" name="description"></textarea>
+
+        <button class="small-btn edit" type="submit">
+            تحديث
+        </button>
+
+    </form>
+
+    <form method="POST" id="deleteForm">
+        <button class="small-btn delete" type="submit">
+            الغاء
+        </button>
+    </form>
+
+</div>
+
+<a href="{{ url_for('admin.dashboard') }}">
+    عودة الى لوحة التحكم
+</a>
+
+</div>
+
+<!-- =========================
+     SAFE DATA
+========================= -->
+<script id="subdistricts-data" type="application/json">
+{{ subdistricts | tojson }}
+</script>
+
+<script>
+
+const subdistricts = JSON.parse(
+    document.getElementById("subdistricts-data").textContent || "[]"
+);
+
+const select = document.getElementById("subdistrictSelector");
+const editor = document.getElementById("editor");
+const listView = document.getElementById("listView");
+
+// =========================
+// INIT
+// =========================
+window.onload = function () {
+    select.value = "all";
+    renderAll();
+};
+
+// =========================
+// SWITCH MODE
+// =========================
+function loadSubdistrict() {
+
+    const id = select.value;
+
+    if (id === "all") {
+        renderAll();
+    } else {
+        renderSingle(id);
+    }
+}
+
+// =========================
+// LIST MODE (LIKE SECTS)
+// =========================
+function renderAll() {
+
+    editor.classList.add("hidden");
+
+    let html = "<h3>All Subdistricts</h3>";
+
+    subdistricts.forEach(s => {
+        html += `
+            <div class="row">
+                <div>
+                    <strong>${s.name}</strong><br>
+                    <small>${s.description || ""}</small>
+                </div>
+            </div>
+        `;
+    });
+
+    listView.innerHTML = html;
+}
+
+// =========================
+// EDIT MODE
+// =========================
+function renderSingle(id) {
+
+    const option = select.options[select.selectedIndex];
+
+    listView.innerHTML = "";
+    editor.classList.remove("hidden");
+
+    document.getElementById("edit_name").value = option.dataset.name;
+    document.getElementById("edit_description").value = option.dataset.description;
+
+    document.getElementById("editForm").action =
+        "/admin/subdistrict/edit/" + id;
+
+    document.getElementById("deleteForm").action =
+        "/admin/subdistrict/delete/" + id;
+}
+
+</script>
+
+{% endblock %}
