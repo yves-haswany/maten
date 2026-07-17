@@ -762,6 +762,56 @@ def view_sects():
         sects=Sect.query.all()
     )
 
+############################################################
+# HELPER FUNCTIONS
+############################################################
+
+
+
+
+############################################################
+# HELPER FUNCTIONS
+############################################################
+
+def get_sect(name):
+
+    name = " ".join(str(name).strip().split())
+
+    aliases = {
+        "سريان ارثوذكس": "اقليات",
+        "سريان كاثوليك": "اقليات",
+        "اشوري ارثوذكس": "اقليات",
+        "كلدان": "اقليات",
+        "كلدان كاثوليك": "اقليات",
+        "قبطي ارثوذكس": "اقليات",
+        "لاتين": "اقليات",
+        "اسرائيلي": "اقليات",
+        "نسطوري": "اقليات",
+        "مختلط": "مختلف",
+        "لا ديني": "مختلف",
+    }
+
+    name = aliases.get(name, name)
+
+    sect = (
+        Sect.query.filter(
+            db.or_(
+                Sect.name == name,
+                Sect.religion == name
+            )
+        ).first()
+    )
+
+    if not sect:
+        raise Exception(f"Sect not found: {name}")
+
+    return sect
+
+
+############################################################
+# ROUTES
+############################################################
+
 
 @admin_bp.route("/upload-electors", methods=["GET", "POST"])
 @admin_required
@@ -890,31 +940,13 @@ def upload_electors():
                 # BIRTH SECT
                 ################################################
 
-                birth_sect_name = str(row["Sect"]).strip()
-
-                birth_sect = Sect.query.filter_by(
-                    name=birth_sect_name
-                ).first()
-
-                if not birth_sect:
-                    raise Exception(
-                        f"Birth sect not found: {birth_sect_name}"
-                    )
+                birth_sect = get_sect(row["Sect"])
 
                 ################################################
                 # CURRENT SECT (RITE)
                 ################################################
 
-                current_sect_name = str(row["Rite"]).strip()
-
-                current_sect = Sect.query.filter_by(
-                    name=current_sect_name
-                ).first()
-
-                if not current_sect:
-                    raise Exception(
-                        f"Current sect not found: {current_sect_name}"
-                    )
+                current_sect = get_sect(row["Rite"])
 
                 ################################################
                 # DOB
@@ -1009,9 +1041,17 @@ def upload_electors():
 
                 elector.dob = dob
 
-                elector.birth_sect_id = birth_sect.id
+                elector.birth_sect_id = (
+    birth_sect.id
+    if birth_sect
+    else None
+)
 
-                elector.current_sect_id = current_sect.id
+                elector.current_sect_id = (
+    current_sect.id
+    if current_sect
+    else None
+)
 
                 elector.district_id = district.id
 
@@ -1325,6 +1365,7 @@ def upload_ballot_pens():
                     "اسرائيلي": "أقليات",
                     "كلدان كاثوليك": "أقليات",
                     "قبطي ارثوذكس": "أقليات",
+                    "نسطوري": "أقليات",
                     "مختلط": "مختلف",
                     "لا ديني": "مختلف",
                 }
