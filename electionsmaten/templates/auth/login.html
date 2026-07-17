@@ -1,32 +1,74 @@
 {% extends "shared/base.html" %}
 
 {% block content %}
+<style>
+    .header-container {
+        text-align: center;
+        font-size:75px;
+        background-color: #f2f2f2;
+    }
+    .header-container h1 {
+    margin: 0;
+    font-size: 75px;      /* Adjust as needed */
+    font-weight: bold;
+    line-height: 1;
+    direction: rtl;
+    color:white;
+    background: #0F5C6E;
+    height:100px;
+    padding-top:20px;
+}
+</style>
+<div class="header-container"><h1>انتخابات نيابية</h1></div>
+
 
 <div class="page-wrapper">
 
     <div class="login-container">
 
-        <h2>تسجيل الدخول</h2>
+        <div class="login-header">
+            <h2> 
+                تسجيل دخول
+            </h2>
+        </div>
+        <br>
+        <div class="login-body">
 
-        <form method="POST">
+            <form method="POST">
 
-            <input type="text" name="username" placeholder="اسم المستخدم" required>
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="اسم المستخدم"
+                    required
+                >
 
-            <input type="password" name="password" placeholder="كلمة المرور" required>
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="كلمة المرور"
+                    required
+                >
 
-            <button type="submit">تسجيل الدخول</button>
-
-        </form>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="error-message">
-                    {{ message }}
+                <div class="login-button-container">
+                    <button type="submit">
+                        دخول
+                    </button>
                 </div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
+
+            </form>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="error-message">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+        </div>
 
     </div>
 

@@ -194,3 +194,37 @@ label {
     padding: 0.5rem 1rem;
     border-radius: 8px;
 }
+.login-header {
+    background: #0F5C6E;
+    color: white;
+    text-align: center;
+    padding: 12px 20px;   /* Reduced from 25px */
+}
+
+.login-header h2 {
+    margin: 0;
+    font-size: 22px;      /* Reduced from 34px */
+    font-weight: bold;
+    line-height: 1.4;
+    direction: rtl;
+}
+.login-button-container {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.login-button-container button {
+    background: #0F5C6E;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 40px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.login-button-container button:hover {
+    background: #0b4b59;
+}
