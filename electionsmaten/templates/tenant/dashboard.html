@@ -12,7 +12,7 @@
 <header class="flex justify-between items-center mb-6">
 <h1 class="text-3xl font-bold">Tenant Dashboard</h1>
 
-<a href="{{ url_for('tenant.logout') }}" class="logout-button">
+<a href="{{ url_for('auth.logout') }}" class="logout-button">
 Logout
 </a>
 </header>
@@ -58,7 +58,26 @@ Logout
 <h2>View Electors info</h2>
 <p>Check the elector info for this tenant in all the districts they are participating in</p>
 </a>
+<a href="{{ url_for('tenant.view_districts') }}" 
+   class="dashboard-card">
 
+<h2>District Credentials</h2>
+
+<p>
+Create and manage district-level access credentials
+</p>
+
+</a>
+<a href="{{ url_for('tenant.manage_ballot_pen_credentials') }}" 
+   class="dashboard-card">
+
+<h2>Ballot Pen Credentials</h2>
+
+<p>
+Create and manage ballot pen users for your districts
+</p>
+
+</a>
 </div>
 
 </body>

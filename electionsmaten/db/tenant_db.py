@@ -1,42 +1,19 @@
-# db/tenant_db.py
+import os
+from sqlalchemy import create_engine
 
-import logging
-import psycopg2
-from psycopg2 import sql
-
-logger = logging.getLogger(__name__)
-
-DB_HOST = "localhost"
-DB_PORT = 5432
-DB_USER = "postgres"
-DB_PASSWORD = "password"
-MASTER_DB = "postgres"
+INSTANCE_PATH = "instance"
 
 
 def create_database(db_name: str):
 
-    conn = psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        dbname=MASTER_DB
-    )
+    os.makedirs(INSTANCE_PATH, exist_ok=True)
 
-    conn.autocommit = True
-    cur = conn.cursor()
+    db_path = os.path.join(INSTANCE_PATH, f"{db_name}.db")
 
-    try:
-        cur.execute(
-            sql.SQL("CREATE DATABASE {}").format(
-                sql.Identifier(db_name)
-            )
-        )
-        logger.info(f"Created DB: {db_name}")
+    engine = create_engine(f"sqlite:///{db_path}")
 
-    except psycopg2.errors.DuplicateDatabase:
-        logger.info(f"DB already exists: {db_name}")
+    # Create empty DB file + tables later
+    from ..models.tenant_models import Base
+    Base.metadata.create_all(engine)
 
-    finally:
-        cur.close()
-        conn.close()
+    print(f"Created SQLite DB: {db_path}")

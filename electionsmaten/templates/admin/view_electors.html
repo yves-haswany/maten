@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+<meta charset="UTF-8">
+
+<title>الناخبون</title>
+
+<link rel="stylesheet"
+href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<h2>
+قائمة الناخبين
+</h2>
+
+
+<table border="1">
+
+<thead>
+
+<tr>
+    <th>الرقم</th>
+    <th>الاسم</th>
+    <th>الأب</th>
+    <th>العائلة</th>
+    <th>الجنس</th>
+    <th>القضاء</th>
+    <th>البلدة</th>
+    <th>رقم السجل</th>
+</tr>
+
+</thead>
+
+
+<tbody>
+
+{% for elector in electors %}
+
+<tr>
+
+<td>
+{{ elector.elector_id }}
+</td>
+
+
+<td>
+{{ elector.first_name }}
+</td>
+
+
+<td>
+{{ elector.father_name }}
+</td>
+
+
+<td>
+{{ elector.family_name }}
+</td>
+
+
+<td>
+{{ elector.gender }}
+</td>
+
+
+<td>
+{{ elector.district.name if elector.district else "" }}
+</td>
+
+
+<td>
+{{ elector.municipality }}
+</td>
+
+
+<td>
+{{ elector.register_number }}
+</td>
+
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+
+</body>
+
+</html>

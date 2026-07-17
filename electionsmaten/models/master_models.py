@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey,Column,Integer,String,Date,Boolean,DateTime
+from sqlalchemy import Enum, ForeignKey,Column,Integer,String,Date,Boolean,DateTime
 from .. import db
 
 
@@ -25,6 +25,7 @@ tenant_district = db.Table(
         primary_key=True
     )
 )
+
 
 
 # =====================================================
@@ -81,6 +82,11 @@ class Party(db.Model):
         unique=True,
         nullable=False
     )
+    tenants = db.relationship(
+    "Tenant",
+    back_populates="party",
+    cascade="all, delete"
+)
 
 
 # =====================================================
@@ -114,7 +120,10 @@ class Tenant(db.Model):
         db.ForeignKey("party.id")
     )
 
-    party = db.relationship("Party")
+    party = db.relationship(
+    "Party",
+    back_populates="tenants"
+)
 
     districts = db.relationship(
 
@@ -158,6 +167,10 @@ class Sect(db.Model):
 
         nullable=False
 
+    )
+    ballot_pens = db.relationship(
+        "BallotPenSect",
+        back_populates="sect"
     )
 
 
@@ -205,9 +218,12 @@ class District(db.Model):
 
         back_populates="district",
 
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        lazy = "selectin"
 
     )
+    def __repr__(self):
+        return f"<District {self.code} - {self.name}>"
 
 
 # =====================================================
@@ -258,13 +274,28 @@ class SubDistrict(db.Model):
 
         back_populates="subdistrict",
 
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        lazy = "selectin"
 
     )
     description = db.Column(
         db.String(255),
         nullable=True
     )
+    @property
+    def total_seats(self):
+        """
+        Total seats assigned to this subdistrict.
+        Computed from the sect allocations.
+        """
+        return sum(
+            allocation.seats
+            for allocation in self.sect_allocations
+        )
+
+    def __repr__(self):
+        return f"<SubDistrict {self.name}>"
+
 
 
 # =====================================================
@@ -321,7 +352,8 @@ class SubdistrictSectSeat(db.Model):
 
     sect = db.relationship(
 
-        "Sect"
+        "Sect",
+        lazy="joined"
 
     )
 
@@ -331,37 +363,284 @@ class SubdistrictSectSeat(db.Model):
 
             "subdistrict_id",
 
-            "sect_id"
+            "sect_id",
+            name = "uq_subdistrict_sect"
 
         ),
 
     )
+    def __repr__(self):
+        return (
+            f"<SeatAllocation "
+            f"Subdistrict={self.subdistrict_id} "
+            f"Sect={self.sect_id} "
+            f"Seats={self.seats}>"
+        )
 class BallotPen(db.Model):
-
     __tablename__ = "ballot_pen"
 
-    id = Column(Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    code= db.Column(db.String(50), nullable=False)
+    serial_number = db.Column(db.String(120), nullable=False)
 
-    serial_number = Column(
+    district_id = db.Column(
+        db.Integer,
+        db.ForeignKey("district.id"),
+        nullable=False
+    )
+
+    subdistrict_id = db.Column(
+        db.Integer,
+        db.ForeignKey("subdistrict.id"),
+        nullable=False
+    )
+
+    village = db.Column(db.String(150))
+
+    polling_center_id = db.Column(
+    db.Integer,
+    db.ForeignKey("polling_centers.id"),
+    nullable=False
+)
+
+
+    room_id = db.Column(
+    db.Integer,
+    db.ForeignKey("rooms.id"),
+    nullable=True
+)
+
+
+    polling_center = db.relationship(
+    "PollingCenter",
+    back_populates="ballot_pens"
+)
+
+
+    room = db.relationship(
+    "Room",
+    back_populates="ballot_pens"
+)
+
+    gender_type = db.Column(db.String(20))
+
+    voters_count = db.Column(db.Integer)
+
+    notes = db.Column(db.String(255))
+
+    sects = db.relationship(
+        "BallotPenSect",
+        backref="ballot_pen",
+        cascade="all, delete-orphan"
+    )
+    district = db.relationship(
+    "District",
+    backref="ballot_pens",
+    lazy="joined"
+)
+
+    subdistrict = db.relationship(
+    "SubDistrict",
+    backref="ballot_pens",
+    lazy="joined"
+)
+class BallotPenSect(db.Model):
+    __tablename__ = "ballot_pen_sect"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    ballot_pen_id = db.Column(
+        db.Integer,
+        db.ForeignKey("ballot_pen.id"),
+        nullable=False
+    )
+
+    sect_id = db.Column(
+        db.Integer,
+        db.ForeignKey("sect.id"),
+        nullable=False
+    )
+    sect = db.relationship(
+        "Sect",
+        back_populates="ballot_pens"
+    )
+    register_from = db.Column(
+        db.Integer
+    )
+
+    register_to = db.Column(
+        db.Integer
+    )
+
+    register_count = db.Column(
+        db.Integer
+    )
+class GenderType(Enum):
+    MIXED = "Mixed"
+    MEN = "Men"
+    WOMEN = "Women"
+class PollingCenter(db.Model):
+
+    __tablename__ = "polling_centers"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    name = db.Column(
+        db.String(200),
+        nullable=False
+    )
+
+    code = db.Column(
+        db.String(50),
+        unique=True
+    )
+
+    district_id = db.Column(
+        db.Integer,
+        db.ForeignKey("district.id"),
+        nullable=False
+    )
+
+    subdistrict_id = db.Column(
+        db.Integer,
+        db.ForeignKey("subdistrict.id"),
+        nullable=False
+    )
+
+
+    rooms = db.relationship(
+        "Room",
+        back_populates="polling_center",
+        cascade="all, delete-orphan"
+    )
+    ballot_pens = db.relationship(
+    "BallotPen",
+    back_populates="polling_center",
+    cascade="all, delete-orphan"
+)
+class Room(db.Model):
+
+    __tablename__ = "rooms"
+
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+
+    name = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+
+    polling_center_id = db.Column(
+        db.Integer,
+        db.ForeignKey("polling_centers.id"),
+        nullable=False
+    )
+
+
+    polling_center = db.relationship(
+        "PollingCenter",
+        back_populates="rooms"
+    )
+
+
+    ballot_pens = db.relationship(
+        "BallotPen",
+        back_populates="room"
+    )
+class Elector(db.Model):
+
+    __tablename__ = "elector"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+
+    elector_id = db.Column(
+
         String(120),
-        unique=True,
+
         nullable=False
+
     )
 
-    district_id = Column(
-        Integer,
-        ForeignKey("district.id"),
-        nullable=False
-    )
 
-    subdistrict_id = Column(
-        Integer,
-        ForeignKey("subdistrict.id"),
-        nullable=False
-    )
+    first_name = db.Column(db.String(120))
 
-    sect_id = Column(
-        Integer,
-        ForeignKey("sect.id"),
-        nullable=False
+    surname = db.Column(db.String(120))
+
+    family_name = db.Column(db.String(120))
+
+    father_name = db.Column(db.String(120))
+
+    mother_name = db.Column(db.String(120))
+
+
+    gender = db.Column(db.String(10))
+
+    dob = db.Column(db.Date)
+
+    birth_sect_id = db.Column(
+    db.Integer,
+    db.ForeignKey("sect.id")
+)
+
+    current_sect_id = db.Column(
+    db.Integer,
+    db.ForeignKey("sect.id")
+)
+
+    birth_sect = db.relationship(
+    "Sect",
+    foreign_keys=[birth_sect_id]
+)
+
+    current_sect = db.relationship(
+    "Sect",
+    foreign_keys=[current_sect_id]
+)
+
+
+    district_id = db.Column(
+    db.Integer,
+    db.ForeignKey("district.id"),
+    nullable=False
+)
+    district = db.relationship("District")
+
+    subdistrict_id = db.Column(
+    db.Integer,
+    db.ForeignKey("subdistrict.id"),
+    nullable=False
+)
+    subdistrict = db.relationship("SubDistrict")
+
+
+    register = db.Column(db.String(120))
+
+    register_number = db.Column(db.Integer)
+
+
+    municipality = db.Column(db.String(120))
+
+    address = db.Column(db.String(255))
+
+
+    is_dead = db.Column(db.Boolean)
+
+    registered = db.Column(db.Boolean)
+
+
+    uploaded_at = db.Column(
+
+        db.DateTime,
+
+        default=datetime.utcnow
+
     )

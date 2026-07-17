@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>أقلام الاقتراع</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+
+body {
+    direction: rtl;
+    text-align: right;
+}
+
+table {
+    direction: rtl;
+}
+
+th, td {
+    text-align: right;
+}
+
+.column-filter {
+    width: 90%;
+    margin-top: 5px;
+    padding: 5px;
+}
+
+header {
+    direction: rtl;
+}
+
+select {
+    cursor: pointer;
+}
+
+</style>
+
+</head>
+
+
+<body class="bg-gray-100 min-h-screen p-6">
+
+
+<header class="flex justify-between items-center mb-6">
+
+    <h1 class="text-3xl font-bold">
+        أقلام الاقتراع
+    </h1>
+
+
+    <div>
+
+        <a href="{{ url_for('admin.upload_ballot_pens') }}"
+           class="submit-button">
+
+            رفع أقلام الاقتراع
+
+        </a>
+
+
+        <a href="{{ url_for('admin.delete_all_ballot_pens') }}"
+           class="logout-button"
+           onclick="return confirm('هل أنت متأكد من حذف جميع أقلام الاقتراع؟ لا يمكن التراجع عن هذا الإجراء');">
+
+            حذف جميع الأقلام
+
+        </a>
+
+
+        <a href="{{ url_for('admin.dashboard') }}"
+           class="logout-button">
+
+            رجوع
+
+        </a>
+
+    </div>
+
+</header>
+
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+
+{% if messages %}
+
+{% for category, message in messages %}
+
+<div class="flash-message">
+
+{{ message }}
+
+</div>
+
+{% endfor %}
+
+{% endif %}
+
+{% endwith %}
+
+
+
+<div class="table-container">
+
+
+<table id="ballotPenTable">
+
+
+<thead>
+
+<tr>
+
+
+<th>
+الدائرة
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+
+
+<th>
+القضاء
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+
+
+<th>
+البلدة
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+
+
+<th>
+مركز الاقتراع
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+</th>
+
+<th>
+رقم الغرفة
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+<th>
+رمز القلم
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+
+
+<th>
+الجنس
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+
+
+<th>
+من سجل
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+<th>
+الى سجل
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+
+
+<th>
+الطوائف
+
+<select class="column-filter">
+<option value="">الكل</option>
+</select>
+
+</th>
+
+
+
+<th>
+الإجراءات
+</th>
+
+
+</tr>
+
+
+</thead>
+
+
+
+
+
+<tbody>
+
+{% for pen in ballot_pens %}
+
+<tr>
+
+    <!-- Da2ira -->
+    <td>
+        {{ pen.district.name if pen.district else "" }}
+    </td>
+
+    <!-- Kazaa -->
+    <td>
+        {{ pen.subdistrict.name if pen.subdistrict else "" }}
+    </td>
+
+    <!-- Balda -->
+    <td>
+        {{ pen.village or "" }}
+    </td>
+
+    <!-- Markaz -->
+    <td>
+        {{ pen.polling_center.name if pen.polling_center else "" }}
+    </td>
+
+    <!-- ChamberNb -->
+    <td>
+        {{ pen.room.name if pen.room else "" }}
+    </td>
+
+    <!-- KalamNb -->
+    <td>
+        {{ pen.serial_number }}
+    </td>
+
+    <!-- Gender -->
+    <td>
+        {{ pen.gender_type or "" }}
+    </td>
+
+    <!-- From register -->
+    <td>
+        {% if pen.sects %}
+            {% for s in pen.sects %}
+                {{ s.register_from or "" }}<br>
+            {% endfor %}
+        {% endif %}
+    </td>
+
+    <!-- To register -->
+    <td>
+        {% if pen.sects %}
+            {% for s in pen.sects %}
+                {{ s.register_to or "" }}<br>
+            {% endfor %}
+        {% endif %}
+    </td>
+
+    <!-- Sect -->
+    <td>
+    {% if pen.sects %}
+        {% for s in pen.sects %}
+            {{ s.sect.name }}
+
+            {% if s.sect.name in sect_aliases %}
+                ({{ sect_aliases[s.sect.name] }})
+            {% endif %}
+
+            <br>
+        {% endfor %}
+    {% else %}
+        -
+    {% endif %}
+</td>
+
+    <td>
+
+        <div class="action-buttons">
+
+            <a href="{{ url_for('admin.edit_ballot_pen',
+                ballot_pen_id=pen.id) }}"
+               class="action-btn edit-btn">
+
+                تعديل
+
+            </a>
+
+            <a href="{{ url_for('admin.delete_ballot_pen',
+                ballot_pen_id=pen.id) }}"
+               class="action-btn delete-btn"
+               onclick="return confirm('هل تريد حذف هذا القلم؟');">
+
+                حذف
+
+            </a>
+
+        </div>
+
+    </td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+
+
+
+<script>
+
+
+/*
+================================================
+CREATE DROPDOWN VALUES AUTOMATICALLY
+================================================
+*/
+
+
+const filters = document.querySelectorAll(
+    ".column-filter"
+);
+
+
+
+filters.forEach((filter, index) => {
+
+
+    let values = new Set();
+
+
+
+    document.querySelectorAll(
+        "#ballotPenTable tbody tr"
+    )
+    .forEach(row => {
+
+
+        let cell = row.cells[index];
+
+
+        if(cell){
+
+            let value = cell.innerText.trim();
+
+
+            if(value){
+
+                values.add(value);
+
+            }
+
+        }
+
+
+    });
+
+
+
+
+    Array.from(values)
+    .sort()
+    .forEach(value => {
+
+
+        let option =
+        document.createElement("option");
+
+
+        option.value = value;
+
+
+        option.textContent = value;
+
+
+        filter.appendChild(option);
+
+
+    });
+
+
+
+});
+
+
+
+
+
+/*
+================================================
+FILTER TABLE
+================================================
+*/
+
+
+filters.forEach(filter => {
+
+
+    filter.addEventListener(
+        "change",
+        filterTable
+    );
+
+
+});
+
+
+
+
+
+function filterTable(){
+
+
+    const rows =
+    document.querySelectorAll(
+        "#ballotPenTable tbody tr"
+    );
+
+
+
+    rows.forEach(row => {
+
+
+
+        let visible = true;
+
+
+
+
+        filters.forEach((filter,index)=>{
+
+
+
+            let selected =
+            filter.value.trim();
+
+
+
+
+            if(!selected){
+
+                return;
+
+            }
+
+
+
+
+            let cell =
+            row.cells[index];
+
+
+
+            if(cell &&
+               cell.innerText.trim() !== selected)
+            {
+
+
+                visible = false;
+
+
+            }
+
+
+
+        });
+
+
+
+
+
+        row.style.display =
+        visible ? "" : "none";
+
+
+
+    });
+
+
+
+}
+
+
+</script>
+
+
+
+
+
+</body>
+
+</html>

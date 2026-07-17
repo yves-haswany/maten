@@ -1,130 +1,156 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 
 <head>
 
-    <title>Upload Ballot Pens</title>
+<meta charset="UTF-8">
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
+<title>رفع أقلام الاقتراع</title>
 
-    <style>
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
 
-        body{
-            font-family:Arial,sans-serif;
-            background:#f4f6f8;
-            padding:40px;
-        }
+<style>
 
-        header{
-            max-width:700px;
-            margin:auto;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            margin-bottom:20px;
-        }
+body{
+    direction: rtl;
+    text-align: right;
+}
 
-        .container{
-            max-width:700px;
-            margin:auto;
-            background:white;
-            padding:25px;
-            border-radius:12px;
-            box-shadow:0 4px 12px rgba(0,0,0,.08);
-        }
+.upload-container{
+    max-width:700px;
+    margin:40px auto;
+    background:#fff;
+    padding:30px;
+    border-radius:10px;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
 
-        label{
-            display:block;
-            margin-top:15px;
-            margin-bottom:6px;
-            font-weight:bold;
-        }
+.upload-container h2{
+    margin-bottom:25px;
+}
 
-        input[type=file]{
-            width:100%;
-            padding:10px;
-            border:1px solid #ccc;
-            border-radius:8px;
-        }
+.upload-container label{
+    display:block;
+    font-weight:bold;
+    margin-bottom:10px;
+}
 
-        button{
-            width:100%;
-            margin-top:20px;
-            padding:10px;
-            border:none;
-            border-radius:8px;
-            background:#4a90e2;
-            color:white;
-            cursor:pointer;
-            font-size:16px;
-        }
+.upload-container input[type=file]{
+    width:100%;
+    margin-bottom:20px;
+}
 
-        button:hover{
-            background:#357ab8;
-        }
+.upload-container small{
+    display:block;
+    line-height:1.8;
+    margin-bottom:25px;
+}
 
-        .flash-message{
-            max-width:700px;
-            margin:10px auto;
-            padding:10px;
-            border-radius:8px;
-            background:#fff3cd;
-            border:1px solid #ffeeba;
-        }
+header{
+    direction:rtl;
+}
 
-    </style>
+</style>
 
 </head>
 
-<body>
+<body class="bg-gray-100 min-h-screen p-6">
 
-<header>
+<header class="flex justify-between items-center mb-6">
 
-    <h1>Upload Ballot Pens</h1>
+    <h1 class="text-3xl font-bold">
 
-    <a href="{{ url_for('admin.dashboard') }}">
-        Back
+        رفع أقلام الاقتراع
+
+    </h1>
+
+    <a href="{{ url_for('admin.dashboard') }}"
+       class="logout-button">
+
+        رجوع
+
     </a>
 
 </header>
 
-{% with messages = get_flashed_messages() %}
+{% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
-{% for message in messages %}
+{% for category, message in messages %}
 
 <div class="flash-message">
+
     {{ message }}
+
 </div>
 
 {% endfor %}
 {% endif %}
 {% endwith %}
 
-<div class="container">
+<div class="upload-container">
 
-<form method="POST" enctype="multipart/form-data">
+    <h2>
 
-    <label>Excel File</label>
+        تنزيل ملف أقلام الاقتراع
 
-    <input
-        type="file"
-        name="file"
-        accept=".xlsx,.xls"
-        required
-    >
+    </h2>
 
-    <small>
-        Upload the national ballot pen list for Lebanon.
-    </small>
+    <form method="POST"
+          enctype="multipart/form-data">
 
-    <button type="submit">
-        Upload Ballot Pens
-    </button>
+        <label>
 
-</form>
+            اختر ملف Excel
+
+        </label>
+
+        <input
+            type="file"
+            name="ballot_pens_file"
+            accept=".xls,.xlsx"
+            required
+        >
+
+        <small>
+
+            يجب أن يحتوي الملف على الأعمدة التالية:
+
+            <br><br>
+
+            <strong>Da2ira</strong> → الدائرة<br>
+            <strong>Kazaa</strong> → القضاء<br>
+            <strong>Balda</strong> → البلدة<br>
+            <strong>Markaz</strong> → مركز الاقتراع<br>
+            <strong>ChamberNb</strong> → رقم الغرفة<br>
+            <strong>KalamNb</strong> → رقم القلم<br>
+            <strong>Gender</strong> → الجنس<br>
+            <strong>From register</strong> → من سجل<br>
+            <strong>To register</strong> → إلى سجل<br>
+            <strong>Sect</strong> → الطائفة
+
+            <br><br>
+
+            <strong>سيتم تجاهل الأعمدة التالية:</strong>
+
+            <br>
+
+            Mouhafaza، MarkazId، UnWeb
+
+        </small>
+
+        <button
+            type="submit"
+            class="submit-button">
+
+            رفع الملف
+
+        </button>
+
+    </form>
 
 </div>
 
 </body>
+
 </html>

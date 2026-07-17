@@ -16,12 +16,12 @@
 <header class="flex justify-between items-center mb-6">
 
     <h1 class="text-3xl font-bold">
-        Admin Dashboard
+        لوحة التحكم الادارية
     </h1>
 
     <a href="{{ url_for('auth.logout') }}"
        class="logout-button">
-        Logout
+        الخروج
     </a>
 
 </header>
@@ -68,10 +68,10 @@
         <p>تعريف اقلام الاقتراع</p>
     </a>
 
-    <!--<a href="{{ url_for('admin.view_ballot_pens') }}" class="dashboard-card">
+    <a href="{{ url_for('admin.view_ballot_pens') }}" class="dashboard-card">
         <h2>تصحيح اقلام اقتراع</h2>
         <p>تعديل و تصحيح اقلام الاقتراع</p>
-    </a>-->
+    </a>
 
     <!-- ✅ FIXED: now INSIDE grid -->
 
@@ -84,6 +84,55 @@
         <h2>تصحيح الأقضية</h2>
         <p>تعديل و تصحيح الأقضية</p>
     </a>-->
+        <!-- =========================
+         POLLING CENTERS
+    ========================== -->
+
+    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
+       class="dashboard-card">
+
+        <h2>مراكز الاقتراع</h2>
+
+        <p>
+            تعريف و إدارة مراكز الاقتراع
+        </p>
+
+    </a>-->
+
+
+    <!-- =========================
+         POLLING ROOMS
+    ========================== -->
+
+    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
+       class="dashboard-card">
+
+        <h2>غرف مراكز الاقتراع</h2>
+
+        <p>
+            إدارة غرف كل مركز اقتراع
+        </p>
+
+    </a>-->
+
+
+    <!-- =========================
+         BALLOT PEN ASSIGNMENT
+    ========================== -->
+
+    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
+       class="dashboard-card">
+
+        <h2>توزيع أقلام الاقتراع</h2>
+
+        <p>
+            ربط الأقلام بالغرف داخل مراكز الاقتراع
+        </p>
+
+    </a>-->
+    <a href="{{ url_for('admin.view_electors') }}" class="dashboard-card">
+    عرض الناخبين
+</a>
 
 </div>
 

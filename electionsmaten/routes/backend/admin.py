@@ -1,8 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, session
 from functools import wraps
 from werkzeug.security import generate_password_hash
 import json
-
+from ...db.tenant_db import create_database
+from ...services.tenant_initializer import populate_tenant_database
+import os
+import pandas as pd
+from sqlalchemy.orm import joinedload, contains_eager
 from ... import db
 from ...models.master_models import (
     Party,
@@ -10,9 +14,11 @@ from ...models.master_models import (
     District,
     SubDistrict,
     Sect,
-    SubdistrictSectSeat
+    SubdistrictSectSeat,
+    User, BallotPen, BallotPenSect,
+    PollingCenter, Room,Elector
 )
-from ...models.tenant_models import Elector
+
 from werkzeug.utils import secure_filename
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -46,48 +52,116 @@ def dashboard():
 # =========================
 
 @admin_bp.route("/create-district", methods=["GET", "POST"])
-@admin_required
 def create_district():
 
+    if session.get("role") != "admin":
+        return redirect(url_for("auth.login"))
+
     if request.method == "POST":
-        name = request.form.get("name", "").strip()
+
         code = request.form.get("code", "").strip()
+        name = request.form.get("name", "").strip()
 
-        if not name or not code:
-            flash("Name and code are required.", "error")
+        if not code or not name:
+            flash("District code and name are required.")
             return redirect(url_for("admin.create_district"))
 
-        if District.query.filter_by(code=code).first():
-            flash("District code already exists.", "error")
+        exists = District.query.filter_by(code=code).first()
+
+        if exists:
+            flash("District code already exists.")
             return redirect(url_for("admin.create_district"))
 
-        district = District(name=name, code=code)
+        district = District(code=code, name=name)
         db.session.add(district)
+        db.session.flush()
+
+        payload = request.form.get("data")
+
+        if payload:
+            try:
+                payload = json.loads(payload)
+            except Exception:
+                flash("Invalid district data.")
+                return redirect(url_for("admin.create_district"))
+
+            for sub_data in payload:
+
+                sub = SubDistrict.query.get(sub_data["subdistrict_id"])
+                if not sub:
+                    continue
+
+                # ✅ FIX: proper relationship assignment
+                sub.district = district
+
+                db.session.flush()
+
+                SubdistrictSectSeat.query.filter_by(
+                    subdistrict_id=sub.id
+                ).delete()
+
+                for seat in sub_data.get("sects", []):
+
+                    db.session.add(SubdistrictSectSeat(
+                        subdistrict=sub,
+                        sect_id=seat["sect_id"],
+                        seats=seat["seats"]
+                    ))
+
         db.session.commit()
 
-        flash("District created successfully.", "success")
+        flash("District created successfully.")
         return redirect(url_for("admin.create_district"))
 
-    subdistricts = [
-        {
-            "id": sd.id,
-            "name": sd.name
+    # ----------------------------
+    # FIX: force fresh loading
+    # ----------------------------
+    districts_db = District.query.order_by(District.code).all()
+    db.session.expire_all()
+
+    districts = []
+
+    for district in districts_db:
+
+        district_json = {
+            "id": district.id,
+            "code": district.code,
+            "name": district.name,
+            "subdistricts": []
         }
-        for sd in SubDistrict.query.order_by(SubDistrict.name).all()
+
+        for sub in district.subdistricts:
+
+            district_json["subdistricts"].append({
+                "id": sub.id,
+                "name": sub.name,
+                "total_seats": sub.total_seats,
+                "sects": [
+                    {
+                        "id": a.sect.id,
+                        "name": a.sect.name,
+                        "seats": a.seats
+                    }
+                    for a in sub.sect_allocations
+                ]
+            })
+
+        districts.append(district_json)
+
+    available_subdistricts = [
+        {"id": s.id, "name": s.name}
+        for s in SubDistrict.query.order_by(SubDistrict.name).all()
     ]
 
     sects = [
-        {
-            "id": s.id,
-            "name": s.name
-        }
+        {"id": s.id, "name": s.name}
         for s in Sect.query.order_by(Sect.name).all()
     ]
 
     return render_template(
         "admin/create_district.html",
-        districts=District.query.all(),
-        subdistricts=subdistricts,
+        districts=districts,
+        subdistricts=available_subdistricts,
         sects=sects
     )
 
@@ -98,88 +172,171 @@ def view_districts():
     return render_template("admin/view_districts.html", districts=District.query.all())
 
 
-@admin_bp.route("/edit-district/<int:district_id>", methods=["GET", "POST"])
-@admin_required
+@admin_bp.route("/district/edit/<int:district_id>", methods=["POST"])
 def edit_district(district_id):
+
+    if session.get("role") != "admin":
+        return redirect(url_for("auth.login"))
 
     district = District.query.get_or_404(district_id)
 
-    if request.method == "POST":
+    code = request.form.get("code", "").strip()
+    name = request.form.get("name", "").strip()
 
-        district.name = request.form["name"]
-        district.code = request.form["code"]
+    if not code or not name:
+        flash("District code and name are required.")
+        return redirect(url_for("admin.create_district"))
 
-        payload = json.loads(request.form.get("data", "[]"))
+    duplicate = District.query.filter(
+        District.code == code,
+        District.id != district.id
+    ).first()
 
-        SubdistrictSectSeat.query.join(SubDistrict).filter(
-            SubDistrict.district_id == district.id
-        ).delete(synchronize_session=False)
+    if duplicate:
+        flash("Another district already uses this code.")
+        return redirect(url_for("admin.create_district"))
 
-        SubDistrict.query.filter_by(district_id=district.id).delete()
+    district.code = code
+    district.name = name
+
+    payload = request.form.get("data")
+
+    if payload:
+
+        try:
+            payload = json.loads(payload)
+        except Exception:
+            flash("Invalid district data.")
+            return redirect(url_for("admin.create_district"))
+
+        # ----------------------------
+        # FIX: properly detach subdistricts
+        # ----------------------------
+        for sub in list(district.subdistricts):
+            sub.district = None
+
         db.session.flush()
 
-        for sub in payload:
+        for sub_data in payload:
 
-            subdistrict = SubDistrict(
-                district_id=district.id,
-                name=sub["name"],
-                total_seats=sub["seats"]
-            )
+            sub = SubDistrict.query.get(sub_data["subdistrict_id"])
+            if not sub:
+                continue
 
-            db.session.add(subdistrict)
+            # FIX: relationship assignment (NOT raw FK only)
+            sub.district = district
+
             db.session.flush()
 
-            for sect_data in sub.get("sects", []):
+            SubdistrictSectSeat.query.filter_by(
+                subdistrict_id=sub.id
+            ).delete()
 
-                sect_name = sect_data["name"].strip().lower()
-
-                sect = Sect.query.filter(
-                    db.func.lower(Sect.name) == sect_name
-                ).first()
-
-                if not sect:
-                    sect = Sect(name=sect_data["name"].strip())
-                    db.session.add(sect)
-                    db.session.flush()
+            for seat in sub_data.get("sects", []):
 
                 db.session.add(SubdistrictSectSeat(
-                    district_id=district.id,
-                    subdistrict_id=subdistrict.id,
-                    sect_id=sect.id,
-                    seats=sect_data["seats"]
+                    subdistrict=sub,
+                    sect_id=seat["sect_id"],
+                    seats=seat["seats"]
                 ))
 
-        db.session.commit()
+    db.session.commit()
 
-        flash("District updated", "success")
-        return redirect(url_for("admin.view_districts"))
+    flash("District updated successfully.")
+    return redirect(url_for("admin.create_district"))
 
-    existing = [
-        {
-            "name": sd.name,
-            "seats": sd.total_seats,
-            "sects": [
-                {"name": a.sect.name, "seats": a.seats}
-                for a in sd.sect_allocations
-            ]
-        }
-        for sd in district.subdistricts
-    ]
 
-    return render_template(
-        "admin/edit_district.html",
-        district=district,
-        existing=existing
+@admin_bp.route(
+    "/district/delete/<int:district_id>",
+    methods=["GET", "POST"]
+)
+def delete_district(district_id):
+
+    ####################################################
+    # ADMIN ONLY
+    ####################################################
+
+    if session.get("role") != "admin":
+        return redirect(url_for("auth.login"))
+
+    ####################################################
+    # FIND DISTRICT
+    ####################################################
+
+    district = District.query.get_or_404(district_id)
+
+    ####################################################
+    # VALIDATION
+    ####################################################
+
+    # Prevent deleting a district that is still used
+    # by users.
+
+    if User.query.filter_by(
+        district_id=district.id
+    ).first():
+
+        flash(
+            "Cannot delete this district because it is assigned to users."
+        )
+
+        return redirect(
+            url_for("admin.create_district")
+        )
+
+    ####################################################
+    # BALLOT PENS
+    ####################################################
+
+    BallotPen.query.filter_by(
+        district_id=district.id
+    ).delete()
+
+    ####################################################
+    # REMOVE TENANT LINKS
+    ####################################################
+
+    district.tenants.clear()
+
+    ####################################################
+    # REMOVE SUBDISTRICT LINKS
+    ####################################################
+
+    for sub in district.subdistricts:
+
+        ###############################################
+        # Remove seat allocations
+        ###############################################
+
+        SubdistrictSectSeat.query.filter_by(
+            subdistrict_id=sub.id
+        ).delete()
+
+        ###############################################
+        # Keep the subdistrict itself
+        ###############################################
+
+        sub.district = None
+
+    ####################################################
+    # DELETE DISTRICT
+    ####################################################
+
+    db.session.delete(district)
+
+    ####################################################
+    # SAVE
+    ####################################################
+
+    db.session.commit()
+
+    flash(
+        "District deleted successfully."
     )
 
-
-@admin_bp.route("/delete-district/<int:district_id>", methods=["POST"])
-@admin_required
-def delete_district(district_id):
-    db.session.delete(District.query.get_or_404(district_id))
-    db.session.commit()
-    flash("District deleted", "success")
-    return redirect(url_for("admin.view_districts"))
+    return redirect(
+        url_for("admin.create_district")
+    )
 
 
 # =========================
@@ -201,6 +358,12 @@ def create_tenant():
             flash("Missing fields", "error")
             return redirect(url_for("admin.create_tenant"))
 
+        # ✅ prevent duplicate username
+        existing = Tenant.query.filter_by(username=username).first()
+        if existing:
+            flash("Username already exists", "error")
+            return redirect(url_for("admin.create_tenant"))
+
         party = Party.query.filter_by(name=party_name).first()
         if not party:
             party = Party(name=party_name)
@@ -210,16 +373,28 @@ def create_tenant():
         tenant = Tenant(
             username=username,
             password=generate_password_hash(password),
-            party_id=party.id
+            party_id=party.id,
+            db_name=f"tenant_{username.lower()}"
         )
 
         db.session.add(tenant)
         db.session.flush()
+        user = User(
+            username=username,
+            password=tenant.password,      # reuse the same hash
+            role="tenant",
+            tenant_id=tenant.id
+        )
 
+        db.session.add(user)
         for d_id in district_ids:
             district = District.query.get(int(d_id))
             if district:
                 tenant.districts.append(district)
+        db.session.commit()
+
+        create_database(tenant.db_name)
+        populate_tenant_database(tenant.id)
 
         db.session.commit()
 
@@ -228,7 +403,8 @@ def create_tenant():
 
     return render_template(
         "admin/create_party.html",
-        districts=District.query.all()
+        districts=District.query.all(),
+        tenants=Tenant.query.all()
     )
 
 
@@ -281,13 +457,50 @@ def edit_tenant(tenant_id):
     )
 
 
+import os
+
+
 @admin_bp.route("/delete-tenant/<int:tenant_id>", methods=["POST"])
 @admin_required
 def delete_tenant(tenant_id):
-    db.session.delete(Tenant.query.get_or_404(tenant_id))
+
+    tenant = Tenant.query.get_or_404(tenant_id)
+    party = tenant.party
+    db_name = tenant.db_name
+
+    # ----------------------------------------
+    # 1. Delete users linked to this tenant
+    # ----------------------------------------
+    users = User.query.filter_by(tenant_id=tenant.id).all()
+    for user in users:
+        db.session.delete(user)
+
+    db.session.flush()
+
+    # ----------------------------------------
+    # 2. Delete tenant
+    # ----------------------------------------
+    db.session.delete(tenant)
+    db.session.flush()
+
+    # ----------------------------------------
+    # 3. Delete party if empty
+    # ----------------------------------------
+    if party and len(party.tenants) == 0:
+        db.session.delete(party)
+
     db.session.commit()
-    flash("Tenant deleted", "success")
-    return redirect(url_for("admin.view_tenants"))
+
+    # ----------------------------------------
+    # 4. Delete tenant DB file
+    # ----------------------------------------
+    db_path = os.path.join(current_app.instance_path, f"{db_name}.db")
+
+    if os.path.exists(db_path):
+        os.remove(db_path)
+
+    flash("Tenant deleted successfully.", "success")
+    return redirect(url_for("admin.create_tenant"))
 
 
 # =========================
@@ -427,25 +640,29 @@ def create_subdistrict():
     )
 
 
-@admin_bp.route("/subdistrict/edit/<int:subdistrict_id>", methods=["POST"])
+@admin_bp.route("/subdistrict/edit/<int:subdistrict_id>", methods=["GET", "POST"])
 @admin_required
 def edit_subdistrict(subdistrict_id):
 
     sd = SubDistrict.query.get_or_404(subdistrict_id)
 
-    sd.name = request.form.get("name", "").strip()
-    sd.description = request.form.get("description", "").strip()
+    if request.method == "POST":
 
-    district_id = request.form.get("district_id")
-    sd.district_id = district_id if district_id else None
+        sd.name = request.form.get("name", "").strip()
+        sd.description = request.form.get("description", "").strip()
 
-    db.session.commit()
+        district_id = request.form.get("district_id")
+        sd.district_id = district_id if district_id else None
 
-    flash("Subdistrict updated", "success")
-    return redirect(url_for("admin.create_subdistrict"))
+        db.session.commit()
+
+        flash("Subdistrict updated", "success")
+        return redirect(url_for("admin.create_subdistrict"))
+
+    return render_template("admin/edit_subdistrict.html", subdistrict=sd)
 
 
-@admin_bp.route("/subdistrict/delete/<int:subdistrict_id>", methods=["POST"])
+@admin_bp.route("/subdistrict/delete/<int:subdistrict_id>", methods=["GET", "POST"])
 @admin_required
 def delete_subdistrict(subdistrict_id):
 
@@ -472,13 +689,71 @@ def view_subdistricts():
 @admin_bp.route("/ballot-pens")
 @admin_required
 def view_ballot_pens():
-    return render_template("admin/placeholder.html", title="Ballot Pens")
+
+    ballot_pens = (
+        BallotPen.query
+
+        ################################################
+        # JOINS USED FOR SORTING
+        ################################################
+        .join(BallotPen.district)
+        .join(BallotPen.subdistrict)
+        .join(BallotPen.polling_center)
+        .outerjoin(BallotPen.room)
+
+        ################################################
+        # TELL SQLALCHEMY TO USE THE JOINS ABOVE
+        ################################################
+        .options(
+            contains_eager(BallotPen.district),
+            contains_eager(BallotPen.subdistrict),
+            contains_eager(BallotPen.polling_center),
+            contains_eager(BallotPen.room),
+
+            joinedload(BallotPen.sects)
+                .joinedload(BallotPenSect.sect)
+        )
+
+        ################################################
+        # SORTING
+        ################################################
+        .order_by(
+            District.name.asc(),
+            SubDistrict.name.asc(),
+            BallotPen.village.asc(),
+            PollingCenter.name.asc(),
+            Room.name.asc(),
+            BallotPen.serial_number.asc()
+        )
+
+        .all()
+    )
+
+    return render_template(
+        "admin/view_ballot_pens.html",
+        ballot_pens=ballot_pens
+    )
 
 
 @admin_bp.route("/electors")
 @admin_required
 def view_electors():
-    return render_template("admin/placeholder.html", title="Electors")
+
+    electors = (
+        Elector.query
+        .order_by(
+            Elector.family_name,
+            Elector.first_name
+        )
+        .all()
+    )
+
+    return render_template(
+        "admin/view_electors.html",
+        electors=electors
+    )
+
+
 @admin_bp.route("/sects")
 @admin_required
 def view_sects():
@@ -486,48 +761,1264 @@ def view_sects():
         "admin/view_sects.html",
         sects=Sect.query.all()
     )
-@admin_bp.route("/upload-electors", methods=["GET", "POST"])
-def upload_electors():
 
-    if session.get("role") != "admin":
-        return redirect(url_for("auth.login"))
+
+@admin_bp.route("/upload-electors", methods=["GET", "POST"])
+@admin_required
+def upload_electors():
 
     if request.method == "POST":
 
         file = request.files.get("file")
-        district_id = request.form.get("district_id")
 
-        if not file:
-            flash("No file selected")
+        if not file or file.filename == "":
+            flash("No file selected", "error")
             return redirect(url_for("admin.upload_electors"))
 
-        # TODO: parse file safely here
+        try:
 
-        flash("Electors uploaded successfully")
+            ####################################################
+            # READ EXCEL
+            ####################################################
 
-        return redirect(url_for("admin.upload_electors"))
+            df = pd.read_excel(file)
 
-    districts = District.query.all()
+            df.columns = (
+                df.columns
+                .astype(str)
+                .str.strip()
+            )
+
+            ####################################################
+            # REQUIRED COLUMNS
+            ####################################################
+
+            required_columns = [
+                ".Counter",
+                "Name",
+                "Surname",
+                "Family",
+                "Father",
+                "Mother",
+                "Gender",
+                "DOB",
+                "Da2ira",
+                "Kazaa",
+                "Balda",
+                "Sect",
+                "Rite",
+                "Register",
+                "RegisterN",
+                "Dead",
+                "Registered"
+            ]
+
+            missing = [
+                c for c in required_columns
+                if c not in df.columns
+            ]
+
+            if missing:
+                raise Exception(
+                    "Missing columns: "
+                    + ", ".join(missing)
+                )
+
+            ####################################################
+            # IMPORT ROWS
+            ####################################################
+
+            for _, row in df.iterrows():
+
+                ################################################
+                # DISTRICT
+                ################################################
+
+                district_name = str(row["Da2ira"]).strip()
+                district_aliases = {
+    "جبل لبنان الأولى": "دائرة جبل لبنان الأولى",
+    "جبل لبنان الثانية": "دائرة جبل لبنان الثانية",
+    "جبل لبنان الثالثة": "دائرة جبل لبنان الثالثة",
+    "جبل لبنان الرابعة": "دائرة جبل لبنان الرابعة",
+    "بيروت الأولى": "دائرة بيروت الأولى",
+    "بيروت الثانية": "دائرة بيروت الثانية",
+    "الشمال الأولى": "دائرة الشمال الأولى",
+    "الشمال الثانية": "دائرة الشمال الثانية",
+    "الشمال الثالثة": "دائرة الشمال الثالثة",
+    "البقاع الأولى": "دائرة البقاع الأولى",
+    "البقاع الثانية": "دائرة البقاع الثانية",
+    "البقاع الثالثة": "دائرة البقاع الثالثة",
+    "الجنوب الأولى": "دائرة الجنوب الأولى",
+    "الجنوب الثانية": "دائرة الجنوب الثانية",
+    "الجنوب الثالثة": "دائرة الجنوب الثالثة",
+    
+}
+                district_name = district_aliases.get(
+    district_name,
+    district_name
+)
+                district = District.query.filter_by(
+                    name=district_name
+                ).first()
+
+                if not district:
+                    raise Exception(
+                        f"District not found: {district_name}"
+                    )
+
+                ################################################
+                # SUBDISTRICT
+                ################################################
+
+                subdistrict_name = str(row["Kazaa"]).strip()
+
+                subdistrict = (
+                    SubDistrict.query
+                    .filter_by(
+                        district_id=district.id,
+                        name=subdistrict_name
+                    )
+                    .first()
+                )
+
+                if not subdistrict:
+                    raise Exception(
+                        f"Subdistrict not found: {subdistrict_name}"
+                    )
+
+                ################################################
+                # BIRTH SECT
+                ################################################
+
+                birth_sect_name = str(row["Sect"]).strip()
+
+                birth_sect = Sect.query.filter_by(
+                    name=birth_sect_name
+                ).first()
+
+                if not birth_sect:
+                    raise Exception(
+                        f"Birth sect not found: {birth_sect_name}"
+                    )
+
+                ################################################
+                # CURRENT SECT (RITE)
+                ################################################
+
+                current_sect_name = str(row["Rite"]).strip()
+
+                current_sect = Sect.query.filter_by(
+                    name=current_sect_name
+                ).first()
+
+                if not current_sect:
+                    raise Exception(
+                        f"Current sect not found: {current_sect_name}"
+                    )
+
+                ################################################
+                # DOB
+                ################################################
+
+                dob = None
+
+                if pd.notna(row["DOB"]):
+                    dob = pd.to_datetime(
+                        row["DOB"]
+                    ).date()
+
+                ################################################
+                # DEAD
+                ################################################
+
+                dead_value = str(row["Dead"]).strip().lower()
+
+                is_dead = dead_value in (
+                    "1",
+                    "true",
+                    "yes",
+                    "نعم"
+                )
+
+                ################################################
+                # REGISTERED
+                ################################################
+
+                registered_value = str(
+                    row["Registered"]
+                ).strip().lower()
+
+                registered = registered_value in (
+                    "1",
+                    "true",
+                    "yes",
+                    "نعم"
+                )
+
+                ################################################
+                # FIND EXISTING ELECTOR
+                ################################################
+
+                elector_id = str(
+                    row[".Counter"]
+                ).strip()
+
+                elector = Elector.query.filter_by(
+                    elector_id=elector_id
+                ).first()
+
+                ################################################
+                # CREATE IF NOT EXISTS
+                ################################################
+
+                if not elector:
+
+                    elector = Elector(
+                        elector_id=elector_id
+                    )
+
+                    db.session.add(elector)
+
+                ################################################
+                # UPDATE DATA
+                ################################################
+
+                elector.first_name = str(
+                    row["Name"]
+                ).strip()
+
+                elector.surname = str(
+                    row["Surname"]
+                ).strip()
+
+                elector.family_name = str(
+                    row["Family"]
+                ).strip()
+
+                elector.father_name = str(
+                    row["Father"]
+                ).strip()
+
+                elector.mother_name = str(
+                    row["Mother"]
+                ).strip()
+
+                elector.gender = str(
+                    row["Gender"]
+                ).strip()
+
+                elector.dob = dob
+
+                elector.birth_sect_id = birth_sect.id
+
+                elector.current_sect_id = current_sect.id
+
+                elector.district_id = district.id
+
+                elector.subdistrict_id = subdistrict.id
+
+                elector.municipality = str(
+                    row["Balda"]
+                ).strip()
+
+                elector.register = str(
+                    row["Register"]
+                ).strip()
+
+                elector.register_number = int(
+                    row["RegisterN"]
+                )
+
+                elector.is_dead = is_dead
+
+                elector.registered = registered
+
+            ####################################################
+            # SAVE
+            ####################################################
+
+            db.session.commit()
+
+            flash(
+                "Electors uploaded successfully.",
+                "success"
+            )
+
+        except Exception as e:
+
+            db.session.rollback()
+
+            flash(
+                f"Upload failed: {e}",
+                "error"
+            )
+
+        return redirect(
+            url_for("admin.upload_electors")
+        )
 
     return render_template(
         "admin/upload_electors.html",
-        districts=districts
+        districts=District.query.order_by(District.name).all(),
     )
+
+
 @admin_bp.route("/ballot-pens/upload", methods=["GET", "POST"])
 @admin_required
 def upload_ballot_pens():
 
     if request.method == "POST":
 
-        file = request.files.get("file")
+        ballot_file = request.files.get("ballot_pens_file")
 
-        if not file:
-            flash("No file uploaded", "error")
+        if not ballot_file or ballot_file.filename == "":
+            flash("Please select an Excel file.", "error")
             return redirect(url_for("admin.upload_ballot_pens"))
 
-        # TODO: parse Excel here
+        try:
 
-        flash("Ballot pens uploaded successfully", "success")
-        return redirect(url_for("admin.view_ballot_pens"))
+            ####################################################
+            # READ EXCEL
+            ####################################################
 
-    return render_template("admin/create_ballot_pen.html")
+            df = pd.read_excel(ballot_file)
+
+            df.columns = (
+                df.columns
+                .astype(str)
+                .str.strip()
+            )
+
+            ####################################################
+            # REQUIRED COLUMNS
+            ####################################################
+
+            required_columns = [
+                "Da2ira",
+                "Kazaa",
+                "Balda",
+                "Markaz",
+                "ChamberNb",
+                "KalamNb",
+                "Gender",
+                "From Register",
+                "To Register",
+                "Sect",
+                "UNWeb"
+            ]
+
+            missing = [
+                c for c in required_columns
+                if c not in df.columns
+            ]
+
+            if missing:
+                raise Exception(
+                    "Missing columns: "
+                    + ", ".join(missing)
+                )
+
+            ####################################################
+            # IMPORT ROWS
+            ####################################################
+
+            for _, row in df.iterrows():
+
+                ################################################
+                # DISTRICT
+                ################################################
+
+                district_name = str(
+                    row["Da2ira"]
+                ).strip()
+                district_aliases = {
+                    "جبل لبنان الثانية": "دائرة جبل لبنان الثانية",
+                    "جبل لبنان الأولى": "دائرة جبل لبنان الأولى",
+                    "بيروت الأولى": "دائرة بيروت الأولى",
+                    "بيروت الثانية": "دائرة بيروت الثانية",
+                    "الشمال الأولى": "دائرة الشمال الأولى",
+                    "الشمال الثانية": "دائرة الشمال الثانية",
+                    "الشمال الثالثة": "دائرة الشمال الثالثة",
+                    "البقاع الأولى": "دائرة البقاع الأولى",
+                    "البقاع الثانية": "دائرة البقاع الثانية",
+                    "البقاع الثالثة": "دائرة البقاع الثالثة",
+                    "الجنوب الأولى": "دائرة الجنوب الأولى",
+                    "الجنوب الثانية": "دائرة الجنوب الثانية",
+                    "الجنوب الثالثة": "دائرة الجنوب الثالثة",
+                    "النبطية": "دائرة النبطية"
+                }
+                district_name = district_aliases.get(
+                    district_name,
+                    district_name
+                )
+
+                district = (
+                    District.query
+                    .filter_by(name=district_name)
+                    .first()
+                )
+
+                if not district:
+                    raise Exception(
+                        f"District not found: {district_name}"
+                    )
+
+                ################################################
+                # SUBDISTRICT
+                ################################################
+
+                subdistrict_name = str(
+                    row["Kazaa"]
+                ).strip()
+
+                subdistrict = (
+                    SubDistrict.query
+                    .filter_by(
+                        district_id=district.id,
+                        name=subdistrict_name
+                    )
+                    .first()
+                )
+
+                if not subdistrict:
+                    raise Exception(
+                        f"Subdistrict not found: {subdistrict_name}"
+                    )
+
+                ################################################
+                # POLLING CENTER
+                ################################################
+
+                polling_center_name = str(
+                    row["Markaz"]
+                ).strip()
+
+                polling_center = (
+                    PollingCenter.query
+                    .filter_by(
+                        district_id=district.id,
+                        subdistrict_id=subdistrict.id,
+                        name=polling_center_name
+                    )
+                    .first()
+                )
+
+                if not polling_center:
+
+                    polling_center = PollingCenter(
+                        district_id=district.id,
+                        subdistrict_id=subdistrict.id,
+                        name=polling_center_name
+                    )
+
+                    db.session.add(polling_center)
+                    db.session.flush()
+
+                ################################################
+                # ROOM
+                ################################################
+
+                room_number = str(
+                    row["ChamberNb"]
+                ).strip()
+
+                room_name = (
+                    f" غرفة رقم {room_number}"
+                )
+
+                room = (
+                    Room.query
+                    .filter_by(
+                        polling_center_id=polling_center.id,
+                        name=room_name
+                    )
+                    .first()
+                )
+
+                if not room:
+
+                    room = Room(
+                        polling_center_id=polling_center.id,
+                        name=room_name
+                    )
+
+                    db.session.add(room)
+                    db.session.flush()
+
+                ################################################
+                # BALLOT PEN
+                ################################################
+
+                serial_number = str(
+                    row["KalamNb"]
+                ).strip()
+
+                code = str(row["UNWeb"]).strip()
+
+                pens = (
+                    BallotPen.query
+                    .filter_by(
+                        code=code
+                    )
+                    .all()
+                )
+
+                ballot_pen = None
+
+                for pen in pens:
+                    if (
+                        pen.village == str(row["Balda"]).strip()
+                        and
+                        pen.gender_type == str(row["Gender"]).strip()
+                        and
+                        pen.polling_center_id == polling_center.id
+                        and
+                        pen.room_id == room.id
+                    ):
+                        ballot_pen = pen
+                        break
+
+                if not ballot_pen:
+
+                    ballot_pen = BallotPen(
+                        serial_number=serial_number,
+                        code=code,
+                        district_id=district.id,
+                        subdistrict_id=subdistrict.id,
+                        village=str(row["Balda"]).strip(),
+                        polling_center_id=polling_center.id,
+                        room_id=room.id,
+                        gender_type=str(row["Gender"]).strip()
+                    )
+
+                    db.session.add(ballot_pen)
+                    db.session.flush()
+
+                else:
+
+                    ballot_pen.village = str(
+                        row["Balda"]
+                    ).strip()
+                    ballot_pen.code = str(
+                        row["UNWeb"]
+                    ).strip()
+                    ballot_pen.polling_center_id = polling_center.id
+                    ballot_pen.room_id = room.id
+                    ballot_pen.gender_type = str(
+                        row["Gender"]
+                    ).strip()
+
+                ################################################
+                # SECT
+                ################################################
+
+                sect_name = str(
+                    row["Sect"]
+                ).strip()
+                sect_name = " ".join(sect_name.split())
+                sect_aliases = {
+                    "سريان ارثوذكس": "أقليات",
+                    "سريان كاثوليك": "أقليات",
+                    "اشوري ارثوذكس": "أقليات",
+                    "كلدان": "أقليات",
+                    "لاتين": "أقليات",
+                    "اسرائيلي": "أقليات",
+                    "كلدان كاثوليك": "أقليات",
+                    "قبطي ارثوذكس": "أقليات",
+                    "مختلط": "مختلف",
+                    "لا ديني": "مختلف",
+                }
+                sect_name = sect_aliases.get(sect_name, sect_name)
+                if sect_name in sect_aliases:
+                    sect_name = "اقليات"
+
+                sect = Sect.query.filter(
+                    db.or_(
+                        Sect.name == sect_name,
+                        Sect.religion == sect_name
+                    )
+                ).first()
+
+                if not sect:
+                    raise Exception(
+                        f"Sect not found: {sect_name}"
+                    )
+
+                ################################################
+                # REGISTERS
+                ################################################
+
+                register_from = None
+                register_to = None
+                register_count = None
+
+                if pd.notna(row["From Register"]):
+                    register_from = int(row["From Register"])
+
+                if pd.notna(row["To Register"]):
+                    register_to = int(row["To Register"])
+
+                if (
+                    register_from is not None
+                    and
+                    register_to is not None
+                ):
+                    register_count = (
+                        register_to
+                        - register_from
+                        + 1
+                    )
+
+                ################################################
+                # BALLOT PEN SECT
+                ################################################
+
+                exists = (
+                    BallotPenSect.query
+                    .filter_by(
+                        ballot_pen_id=ballot_pen.id,
+                        sect_id=sect.id,
+                        register_from=register_from,
+                        register_to=register_to
+                    )
+                    .first()
+                )
+
+                if not exists:
+
+                    db.session.add(
+                        BallotPenSect(
+                            ballot_pen_id=ballot_pen.id,
+                            sect_id=sect.id,
+                            register_from=register_from,
+                            register_to=register_to,
+                            register_count=register_count
+                        )
+                    )
+
+            ####################################################
+            # SAVE
+            ####################################################
+
+            db.session.commit()
+
+            flash(
+                "Ballot pens uploaded successfully.",
+                "success"
+            )
+
+            return redirect(
+                url_for("admin.view_ballot_pens")
+            )
+
+        except Exception as e:
+
+            db.session.rollback()
+
+            flash(
+                f"Upload failed: {e}",
+                "error"
+            )
+
+            return redirect(
+                url_for("admin.upload_ballot_pens")
+            )
+
+    return render_template(
+        "admin/create_ballot_pen.html"
+    )
+
+
+@admin_bp.route(
+    "/ballot-pens/edit/<int:ballot_pen_id>",
+    methods=["GET", "POST"]
+)
+@admin_required
+def edit_ballot_pen(ballot_pen_id):
+
+    ballot_pen = BallotPen.query.get_or_404(
+        ballot_pen_id
+    )
+
+    districts = (
+        District.query
+        .order_by(District.name)
+        .all()
+    )
+
+    if request.method == "POST":
+
+        ballot_pen.serial_number = request.form.get(
+            "serial_number"
+        )
+
+        ballot_pen.district_id = request.form.get(
+            "district_id"
+        )
+
+        ballot_pen.subdistrict_id = request.form.get(
+            "subdistrict_id"
+        )
+
+        ballot_pen.village = request.form.get(
+            "village"
+        )
+
+        ballot_pen.polling_center = request.form.get(
+            "polling_center"
+        )
+
+        ballot_pen.gender_type = request.form.get(
+            "gender_type"
+        )
+
+        ballot_pen.voters_count = request.form.get(
+            "voters_count"
+        )
+
+        ballot_pen.notes = request.form.get(
+            "notes"
+        )
+
+        db.session.commit()
+
+        flash(
+            "Ballot pen updated successfully.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_ballot_pens"
+            )
+        )
+
+    return render_template(
+        "admin/edit_ballot_pen.html",
+        ballot_pen=ballot_pen,
+        districts=districts
+    )
+
+
+@admin_bp.route(
+    "/ballot-pens/delete/<int:ballot_pen_id>",
+    methods=["POST", "GET"]
+)
+@admin_required
+def delete_ballot_pen(ballot_pen_id):
+
+    ballot_pen = BallotPen.query.get_or_404(
+        ballot_pen_id
+    )
+
+    ####################################################
+    # SAVE RELATED OBJECTS
+    ####################################################
+
+    room = ballot_pen.room
+    polling_center = ballot_pen.polling_center
+
+    ####################################################
+    # DELETE LINKED SECTS
+    ####################################################
+
+    BallotPenSect.query.filter_by(
+        ballot_pen_id=ballot_pen.id
+    ).delete()
+
+    ####################################################
+    # DELETE BALLOT PEN
+    ####################################################
+
+    db.session.delete(ballot_pen)
+    db.session.flush()
+
+    ####################################################
+    # DELETE ROOM IF EMPTY
+    ####################################################
+
+    if room:
+
+        remaining_pens = BallotPen.query.filter_by(
+            room_id=room.id
+        ).count()
+
+        if remaining_pens == 0:
+            db.session.delete(room)
+            db.session.flush()
+
+    ####################################################
+    # DELETE POLLING CENTER IF EMPTY
+    ####################################################
+
+    if polling_center:
+
+        remaining_rooms = Room.query.filter_by(
+            polling_center_id=polling_center.id
+        ).count()
+
+        remaining_pens = BallotPen.query.filter_by(
+            polling_center_id=polling_center.id
+        ).count()
+
+        if remaining_rooms == 0 and remaining_pens == 0:
+            db.session.delete(polling_center)
+
+    ####################################################
+    # SAVE
+    ####################################################
+
+    db.session.commit()
+
+    flash(
+        "Ballot pen deleted successfully.",
+        "success"
+    )
+
+    return redirect(
+        url_for("admin.view_ballot_pens")
+    )
+
+
+# =========================
+# POLLING CENTERS
+# =========================
+
+@admin_bp.route(
+    "/polling-centers/create",
+    methods=["GET", "POST"]
+)
+@admin_required
+def create_polling_center():
+
+    if request.method == "POST":
+
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        district_id = request.form.get(
+            "district_id"
+        )
+
+        subdistrict_id = request.form.get(
+            "subdistrict_id"
+        )
+
+        address = request.form.get(
+            "address"
+        )
+
+        if not name:
+
+            flash(
+                "Polling center name required.",
+                "error"
+            )
+
+            return redirect(
+                url_for(
+                    "admin.create_polling_center"
+                )
+            )
+
+        center = PollingCenter(
+
+            name=name,
+
+            district_id=district_id,
+
+            subdistrict_id=subdistrict_id,
+
+            address=address
+        )
+
+        db.session.add(center)
+
+        db.session.commit()
+
+        flash(
+            "Polling center created successfully.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_polling_centers"
+            )
+        )
+
+    return render_template(
+        "admin/create_polling_center.html",
+        districts=District.query.all(),
+        subdistricts=SubDistrict.query.all()
+    )
+
+
+@admin_bp.route(
+    "/polling-centers"
+)
+@admin_required
+def view_polling_centers():
+
+    centers = (
+        PollingCenter.query
+        .order_by(
+            PollingCenter.name
+        )
+        .all()
+    )
+
+    return render_template(
+        "admin/view_polling_centers.html",
+        centers=centers
+    )
+
+
+@admin_bp.route(
+    "/polling-centers/edit/<int:center_id>",
+    methods=["GET", "POST"]
+)
+@admin_required
+def edit_polling_center(center_id):
+
+    center = PollingCenter.query.get_or_404(
+        center_id
+    )
+
+    if request.method == "POST":
+
+        center.name = request.form.get(
+            "name"
+        )
+
+        center.district_id = request.form.get(
+            "district_id"
+        )
+
+        center.subdistrict_id = request.form.get(
+            "subdistrict_id"
+        )
+
+        center.address = request.form.get(
+            "address"
+        )
+
+        db.session.commit()
+
+        flash(
+            "Polling center updated.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_polling_centers"
+            )
+        )
+
+    return render_template(
+        "admin/edit_polling_center.html",
+        center=center,
+        districts=District.query.all(),
+        subdistricts=SubDistrict.query.all()
+    )
+
+
+@admin_bp.route(
+    "/polling-centers/delete/<int:center_id>",
+    methods=["POST"]
+)
+@admin_required
+def delete_polling_center(center_id):
+
+    center = PollingCenter.query.get_or_404(
+        center_id
+    )
+
+    if center.rooms:
+
+        flash(
+            "Cannot delete polling center. Remove rooms first.",
+            "error"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_polling_centers"
+            )
+        )
+
+    db.session.delete(
+        center
+    )
+
+    db.session.commit()
+
+    flash(
+        "Polling center deleted.",
+        "success"
+    )
+
+    return redirect(
+        url_for(
+            "admin.view_polling_centers"
+        )
+    )
+
+
+@admin_bp.route(
+    "/polling-centers/<int:center_id>/rooms/create",
+    methods=["GET", "POST"]
+)
+@admin_required
+def create_polling_room(center_id):
+
+    center = PollingCenter.query.get_or_404(
+        center_id
+    )
+
+    if request.method == "POST":
+
+        name = request.form.get(
+            "name"
+        )
+
+        room = Room(
+
+            name=name,
+
+            polling_center_id=center.id
+        )
+
+        db.session.add(room)
+
+        db.session.commit()
+
+        flash(
+            "Room created.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_polling_rooms",
+                center_id=center.id
+            )
+        )
+
+    return render_template(
+        "admin/create_polling_room.html",
+        center=center
+    )
+
+
+@admin_bp.route(
+    "/polling-centers/<int:center_id>/rooms"
+)
+@admin_required
+def view_polling_rooms(center_id):
+
+    center = PollingCenter.query.get_or_404(
+        center_id
+    )
+
+    return render_template(
+        "admin/view_polling_rooms.html",
+        center=center,
+        rooms=center.rooms
+    )
+
+
+@admin_bp.route(
+    "/polling-rooms/edit/<int:room_id>",
+    methods=["GET", "POST"]
+)
+@admin_required
+def edit_polling_room(room_id):
+
+    room = Room.query.get_or_404(
+        room_id
+    )
+
+    if request.method == "POST":
+
+        room.name = request.form.get(
+            "name"
+        )
+
+        db.session.commit()
+
+        flash(
+            "Room updated.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_polling_rooms",
+                center_id=room.polling_center_id
+            )
+        )
+
+    return render_template(
+        "admin/edit_polling_room.html",
+        room=room
+    )
+
+
+@admin_bp.route(
+    "/polling-rooms/delete/<int:room_id>",
+    methods=["POST"]
+)
+@admin_required
+def delete_polling_room(room_id):
+
+    room = Room.query.get_or_404(
+        room_id
+    )
+
+    if room.ballot_pens:
+
+        flash(
+            "Cannot delete room. Ballot pens are assigned.",
+            "error"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_polling_rooms",
+                center_id=room.polling_center_id
+            )
+        )
+
+    center_id = room.polling_center_id
+
+    db.session.delete(
+        room
+    )
+
+    db.session.commit()
+
+    flash(
+        "Room deleted.",
+        "success"
+    )
+
+    return redirect(
+        url_for(
+            "admin.view_polling_rooms",
+            center_id=center_id
+        )
+    )
+
+
+@admin_bp.route(
+    "/polling-rooms/<int:room_id>/assign-ballot-pens",
+    methods=["GET", "POST"]
+)
+@admin_required
+def assign_ballot_pens(room_id):
+
+    room = Room.query.get_or_404(
+        room_id
+    )
+
+    if request.method == "POST":
+
+        ballot_pen_ids = request.form.getlist(
+            "ballot_pens"
+        )
+
+        for bp_id in ballot_pen_ids:
+
+            ballot_pen = BallotPen.query.get(
+                int(bp_id)
+            )
+
+            if ballot_pen:
+
+                ballot_pen.room_id = room.id
+
+                ballot_pen.polling_center_id = (
+                    room.polling_center_id
+                )
+
+        db.session.commit()
+
+        flash(
+            "Ballot pens assigned successfully.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "admin.view_polling_rooms",
+                center_id=room.polling_center_id
+            )
+        )
+
+    available_ballot_pens = (
+        BallotPen.query
+        .filter(
+            BallotPen.room_id.is_(None)
+        )
+        .all()
+    )
+
+    return render_template(
+        "admin/assign_ballot_pens.html",
+        room=room,
+        ballot_pens=available_ballot_pens
+    )
+
+
+@admin_bp.route(
+    "/ballot-pens/remove-room/<int:ballot_pen_id>",
+    methods=["POST"]
+)
+@admin_required
+def remove_ballot_pen_room(ballot_pen_id):
+
+    ballot_pen = BallotPen.query.get_or_404(
+        ballot_pen_id
+    )
+
+    ballot_pen.room_id = None
+    ballot_pen.polling_center_id = None
+
+    db.session.commit()
+
+    flash(
+        "Ballot pen removed from room.",
+        "success"
+    )
+
+    return redirect(
+        url_for(
+            "admin.view_ballot_pens"
+        )
+    )
+
+
+@admin_bp.route("/ballot-pens/delete-all")
+@admin_required
+def delete_all_ballot_pens():
+
+    BallotPenSect.query.delete()
+
+    BallotPen.query.delete()
+
+    Room.query.delete()
+
+    PollingCenter.query.delete()
+
+    db.session.commit()
+
+    flash(
+        "تم حذف جميع أقلام الاقتراع ومراكز الاقتراع والغرف.",
+        "success"
+    )
+
+    return redirect(url_for("admin.view_ballot_pens"))

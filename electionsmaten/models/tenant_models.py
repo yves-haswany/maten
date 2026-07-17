@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy.orm import declarative_base
+
 
 from sqlalchemy import (
 
@@ -18,115 +18,22 @@ from sqlalchemy import (
 
     ForeignKey
 )
-
-Base = declarative_base()
+from ..models.master_models import Tenant
+from ..db.master_db import db
+Base = db.Model
 
 
 # =====================================================
 # ELECTOR
 # =====================================================
 
-class Elector(Base):
 
-    __tablename__ = "elector"
-
-    id = Column(Integer, primary_key=True)
-
-
-    elector_id = Column(
-
-        String(120),
-
-        nullable=False
-
-    )
-
-
-    first_name = Column(String(120))
-
-    surname = Column(String(120))
-
-    family_name = Column(String(120))
-
-    father_name = Column(String(120))
-
-    mother_name = Column(String(120))
-
-
-    gender = Column(String(10))
-
-    dob = Column(Date)
-
-
-    religion_id = Column(Integer)
-
-    sect_id = Column(Integer)
-
-
-    district_id = Column(Integer)
-
-    subdistrict_id = Column(Integer)
-
-
-    register = Column(String(120))
-
-    register_number = Column(Integer)
-
-
-    municipality = Column(String(120))
-
-    address = Column(String(255))
-
-
-    is_dead = Column(Boolean)
-
-    registered = Column(Boolean)
-
-
-    uploaded_at = Column(
-
-        DateTime,
-
-        default=datetime.utcnow
-
-    )
 
 
 # =====================================================
 # BALLOT PEN
 # =====================================================
 
-    class BallotPen(Base):
-
-        __tablename__ = "ballot_pen"
-
-        id = Column(Integer, primary_key=True)
-
-        serial_number = Column(String(120))
-
-
-        tenant_id = Column(Integer)
-
-
-        district_id = Column(Integer)
-
-        subdistrict_id = Column(Integer)
-
-        sect_id = Column(Integer)
-
-
-        username = Column(
-
-            String(120),
-
-            unique=True
-
-        )
-
-        password = Column(String(255))
-
-
-        active_session_token = Column(String(255))
 
 
 # =====================================================
@@ -233,3 +140,11 @@ class BallotPenAccount(Base):
     )
 
     active_session_token = Column(String(255))
+class DistrictAccount(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    tenant_id = db.Column(db.Integer, db.ForeignKey("tenant.id"))
+    district_id = db.Column(db.Integer, db.ForeignKey("district.id"))
+
+    username = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(255))

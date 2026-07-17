@@ -1,0 +1,343 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<div class="page-container">
+
+    <h1>Electors</h1>
+
+    <table class="table">
+
+        <thead>
+
+<tr>
+
+<th>
+    Elector ID
+    <input type="text" class="column-filter">
+</th>
+
+
+<th>
+    First Name
+    <input type="text" class="column-filter">
+</th>
+
+
+<th>
+    Surname
+    <input type="text" class="column-filter">
+</th>
+
+
+<th>
+    Family Name
+    <input type="text" class="column-filter">
+</th>
+
+
+<th>
+    Father
+    <input type="text" class="column-filter">
+</th>
+
+
+<th>
+    Mother
+    <input type="text" class="column-filter">
+</th>
+
+
+<!-- DROPDOWN -->
+<th>
+    Gender
+
+    <select class="column-filter">
+        <option value="">All</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+    </select>
+
+</th>
+
+
+
+<th>
+    Date of Birth
+    <input type="text" class="column-filter">
+</th>
+
+
+
+<th>
+    Religion
+
+    <select class="column-filter">
+
+        <option value="">
+            All
+        </option>
+
+        {% for religion in religions %}
+
+        <option value="{{ religion.name|lower }}">
+            {{ religion.name }}
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+</th>
+
+
+
+<th>
+    Sect
+
+    <select class="column-filter">
+
+        <option value="">
+            All
+        </option>
+
+        {% for sect in sects %}
+
+        <option value="{{ sect.name|lower }}">
+            {{ sect.name }}
+
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+</th>
+
+
+
+
+<th>
+    District
+
+    <select class="column-filter">
+
+        <option value="">
+            All
+        </option>
+
+        {% for district in districts %}
+
+        <option value="{{ district.name|lower }}">
+            {{ district.name }}
+
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+</th>
+
+
+
+
+<th>
+    Subdistrict
+
+    <select class="column-filter">
+
+        <option value="">
+            All
+        </option>
+
+        {% for subdistrict in subdistricts %}
+
+        <option value="{{ subdistrict.name|lower }}">
+            {{ subdistrict.name }}
+
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+</th>
+
+
+
+<th>
+    Register
+    <input type="text" class="column-filter">
+</th>
+
+
+<th>
+    Register No.
+    <input type="text" class="column-filter">
+</th>
+
+
+
+<th>
+    Municipality
+
+    <select class="column-filter">
+
+        <option value="">
+            All
+        </option>
+
+        {% for municipality in municipalities %}
+
+        <option value="{{ municipality|lower }}">
+            {{ municipality }}
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+</th>
+
+
+
+
+<th>
+    Address
+    <input type="text" class="column-filter">
+</th>
+
+
+
+<th>
+    Dead
+
+    <select class="column-filter">
+
+        <option value="">
+            All
+        </option>
+
+        <option value="yes">
+            Yes
+        </option>
+
+        <option value="no">
+            No
+        </option>
+
+    </select>
+
+</th>
+
+
+
+<th>
+    Registered
+
+    <select class="column-filter">
+
+        <option value="">
+            All
+        </option>
+
+        <option value="yes">
+            Yes
+        </option>
+
+        <option value="no">
+            No
+        </option>
+
+    </select>
+
+</th>
+
+
+
+<th>
+    Uploaded
+    <input type="text" class="column-filter">
+</th>
+
+
+</tr>
+
+</thead>
+
+        <tbody>
+
+        {% for elector in electors %}
+
+            <tr>
+
+                <td>{{ elector.elector_id }}</td>
+
+                <td>{{ elector.first_name }}</td>
+
+                <td>{{ elector.surname }}</td>
+
+                <td>{{ elector.family_name }}</td>
+
+                <td>{{ elector.father_name }}</td>
+
+                <td>{{ elector.mother_name }}</td>
+
+                <td>{{ elector.gender }}</td>
+
+                <td>{{ elector.dob or "" }}</td>
+
+                <td>{{ elector.religion_id }}</td>
+
+                <td>{{ elector.sect_id }}</td>
+
+                <td>{{ elector.district_id }}</td>
+
+                <td>{{ elector.subdistrict_id }}</td>
+
+                <td>{{ elector.register }}</td>
+
+                <td>{{ elector.register_number }}</td>
+
+                <td>{{ elector.municipality }}</td>
+
+                <td>{{ elector.address }}</td>
+
+                <td>
+                    {% if elector.is_dead %}
+                        Yes
+                    {% else %}
+                        No
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if elector.registered %}
+                        Yes
+                    {% else %}
+                        No
+                    {% endif %}
+                </td>
+
+                <td>{{ elector.uploaded_at }}</td>
+
+            </tr>
+
+        {% else %}
+
+            <tr>
+                <td colspan="19">
+                    No electors found.
+                </td>
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}

@@ -60,7 +60,7 @@
 
     <form method="POST" id="editForm">
 
-        <input type="hidden" name="name" id="sub_name">
+        <input type="hidden" name="name" id="name">
 
         <label>اسم القضاء</label>
         <input type="text" id="edit_name" name="name">
@@ -164,10 +164,10 @@ function renderSingle(id) {
     document.getElementById("edit_description").value = option.dataset.description;
 
     document.getElementById("editForm").action =
-        "/admin/edit-subdistrict/" + id;
+        "/admin/subdistrict/edit/" + id;
 
     document.getElementById("deleteForm").action =
-        "/admin/delete-subdistrict/" + id;
+        "/admin/subdistrict/delete/" + id;
 }
 
 </script>
