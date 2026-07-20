@@ -741,9 +741,16 @@ def view_electors():
 
     electors = (
         Elector.query
+        .join(Elector.district)
+        .join(Elector.subdistrict)
+        .options(
+            joinedload(Elector.birth_sect),
+            joinedload(Elector.current_sect)
+        )
         .order_by(
-            Elector.family_name,
-            Elector.first_name
+            District.name.asc(),
+            SubDistrict.name.asc(),
+            Elector.register_number.asc()
         )
         .all()
     )
@@ -778,15 +785,20 @@ def get_sect(name):
     name = " ".join(str(name).strip().split())
 
     aliases = {
-        "سريان ارثوذكس": "اقليات",
-        "سريان كاثوليك": "اقليات",
-        "اشوري ارثوذكس": "اقليات",
-        "كلدان": "اقليات",
-        "كلدان كاثوليك": "اقليات",
-        "قبطي ارثوذكس": "اقليات",
-        "لاتين": "اقليات",
-        "اسرائيلي": "اقليات",
-        "نسطوري": "اقليات",
+        "سريان ارثوذكس": "أقليات",
+        "سريان كاثوليك": "أقليات",
+        "اشوري ارثوذكس": "أقليات",
+        "كلدان": "أقليات",
+        "كلدان كاثوليك": "أقليات",
+        "قبطي ارثوذكس": "أقليات",
+        "لاتيني": "أقليات",
+        "اسرائيلي": "أقليات",
+        "نسطوري": "أقليات",
+        "انجيلي (بروتستانت)": "أقليات",
+        "ارمن بروتستانت": "أقليات",
+        "--":"أقليات",
+        "اشوري":"أقليات",
+        "قبطي":"أقليات",
         "مختلط": "مختلف",
         "لا ديني": "مختلف",
     }
@@ -2063,3 +2075,28 @@ def delete_all_ballot_pens():
     )
 
     return redirect(url_for("admin.view_ballot_pens"))
+@admin_bp.route("/electors/delete-all", methods=["POST"])
+@admin_required
+def delete_all_electors():
+
+    try:
+
+        Elector.query.delete()
+
+        db.session.commit()
+
+        flash(
+            "All electors were deleted successfully.",
+            "success"
+        )
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        flash(
+            f"Delete failed: {e}",
+            "error"
+        )
+
+    return redirect(url_for("admin.view_electors"))

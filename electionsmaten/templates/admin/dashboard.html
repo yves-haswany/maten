@@ -1,141 +1,289 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 
 <head>
 
 <meta charset="UTF-8">
-<title>ايقاع-لوحة التحكم الادارية</title>
+
+<title>لوحة التحكم الإدارية</title>
 
 <link rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}">
 
+<style>
+
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+/* ================= HEADER ================= */
+
+.page-header{
+    background:#0F5C6E;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.page-header h1{
+    margin:0;
+    font-size:42px;
+}
+
+/* ================= MAIN CARD ================= */
+
+.page-container{
+
+    width:95%;
+    max-width:1700px;
+
+    margin:35px auto;
+
+    background:white;
+
+    border-radius:12px;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+
+    padding:30px;
+
+}
+
+/* ================= TOP BAR ================= */
+
+.top-actions{
+
+    display:flex;
+
+    justify-content:flex-start;
+
+    margin-bottom:30px;
+
+}
+
+/* ================= DASHBOARD GRID ================= */
+
+.dashboard-grid{
+
+    display:grid;
+
+    grid-template-columns:
+    repeat(auto-fit,minmax(260px,1fr));
+
+    gap:25px;
+
+}
+
+/* ================= DASHBOARD CARD ================= */
+
+.dashboard-card{
+
+    background:white;
+
+    border:2px solid #0F5C6E;
+
+    border-radius:12px;
+
+    padding:30px;
+
+    text-align:center;
+
+    text-decoration:none;
+
+    color:#333;
+
+    transition:.25s;
+
+    box-shadow:0 3px 10px rgba(0,0,0,.08);
+
+}
+
+.dashboard-card:hover{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    transform:translateY(-4px);
+
+}
+
+.dashboard-card h2{
+
+    margin-top:0;
+
+    margin-bottom:15px;
+
+    font-size:24px;
+
+}
+
+.dashboard-card p{
+
+    margin:0;
+
+    font-size:16px;
+
+    line-height:1.7;
+
+}
+
+/* ================= FLASH ================= */
+
+.flash-message{
+
+    background:#dff0d8;
+
+    color:#3c763d;
+
+    padding:12px;
+
+    border-radius:6px;
+
+    margin-bottom:20px;
+
+}
+
+</style>
+
 </head>
 
-<body class="bg-gray-100 min-h-screen p-6">
+<body>
 
-<header class="flex justify-between items-center mb-6">
+<div class="page-header">
 
-    <h1 class="text-3xl font-bold">
-        لوحة التحكم الادارية
-    </h1>
+<h1>
 
-    <a href="{{ url_for('auth.logout') }}"
-       class="logout-button">
-        الخروج
-    </a>
+لوحة التحكم الإدارية
 
-</header>
+</h1>
 
-<div class="dashboard-grid">
+</div>
 
-    <a href="{{ url_for('admin.create_district') }}" class="dashboard-card">
-        <h2>دوائر انتخابية</h2>
-        <p>دوائر و توزيع المقاعد</p>
-    </a>
+<div class="page-container">
 
-   <!-- <a href="{{ url_for('admin.view_districts') }}" class="dashboard-card">
-        <h2>تصحيح دوائر انتخابية</h2>
-        <p>تعديل و تصحيح الدوائر الانتخابية</p>
-    </a>-->
+<div class="top-actions">
 
-    <a href="{{ url_for('admin.create_sect') }}" class="dashboard-card">
-        <h2>طوائف و مذاهب</h2>
-        <p>تعريف الطوائف و المذاهب</p>
-    </a>
+<a href="{{ url_for('auth.logout') }}"
+   class="logout-button">
 
-   <!-- <a href="{{ url_for('admin.view_sects') }}" class="dashboard-card">
-        <h2>تصحيح الطوائف و المذاهب</h2>
-        <p>تعديل و تصحيح الطوائف و المذاهب</p>
-    </a>-->
+تسجيل الخروج
 
-    <a href="{{ url_for('admin.create_tenant') }}" class="dashboard-card">
-        <h2>زبائن و احزاب</h2>
-        <p>تعريف قاعدة معلومات الزبائن و الاحزاب</p>
-    </a>
-
-    <!--<a href="{{ url_for('admin.view_tenants') }}" class="dashboard-card">
-        <h2>تصحيح زبائن</h2>
-        <p>تعديل و تصحيح قاعدة معلومات الزبائن و الاحزاب</p>
-    </a>-->
-
-    <a href="{{ url_for('admin.upload_electors') }}" class="dashboard-card">
-        <h2>تنزيل لوائح الناخبين</h2>
-        <p>تنزيل لوائح الناخبين من وزارة الداخلية</p>
-    </a>
-
-    <a href="{{ url_for('admin.upload_ballot_pens') }}" class="dashboard-card">
-        <h2>اقلام اقتراع</h2>
-        <p>تعريف اقلام الاقتراع</p>
-    </a>
-
-    <a href="{{ url_for('admin.view_ballot_pens') }}" class="dashboard-card">
-        <h2>تصحيح اقلام اقتراع</h2>
-        <p>تعديل و تصحيح اقلام الاقتراع</p>
-    </a>
-
-    <!-- ✅ FIXED: now INSIDE grid -->
-
-    <a href="{{ url_for('admin.create_subdistrict') }}" class="dashboard-card">
-        <h2>الأقضية</h2>
-        <p>تعريف الأقضية اللبنانية</p>
-    </a>
-
-    <!--<a href="{{ url_for('admin.view_subdistricts') }}" class="dashboard-card">
-        <h2>تصحيح الأقضية</h2>
-        <p>تعديل و تصحيح الأقضية</p>
-    </a>-->
-        <!-- =========================
-         POLLING CENTERS
-    ========================== -->
-
-    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
-       class="dashboard-card">
-
-        <h2>مراكز الاقتراع</h2>
-
-        <p>
-            تعريف و إدارة مراكز الاقتراع
-        </p>
-
-    </a>-->
-
-
-    <!-- =========================
-         POLLING ROOMS
-    ========================== -->
-
-    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
-       class="dashboard-card">
-
-        <h2>غرف مراكز الاقتراع</h2>
-
-        <p>
-            إدارة غرف كل مركز اقتراع
-        </p>
-
-    </a>-->
-
-
-    <!-- =========================
-         BALLOT PEN ASSIGNMENT
-    ========================== -->
-
-    <!--<a href="{{ url_for('admin.view_polling_centers') }}" 
-       class="dashboard-card">
-
-        <h2>توزيع أقلام الاقتراع</h2>
-
-        <p>
-            ربط الأقلام بالغرف داخل مراكز الاقتراع
-        </p>
-
-    </a>-->
-    <a href="{{ url_for('admin.view_electors') }}" class="dashboard-card">
-     <h2> عرض الناخبين</h2>
-     <p>عرض و تصحيح بيانات الناخبين</p>
 </a>
 
 </div>
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category,message in messages %}
+
+<div class="flash-message">
+
+{{ message }}
+
+</div>
+
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="dashboard-grid">
+
+<a href="{{ url_for('admin.create_district') }}"
+   class="dashboard-card">
+
+<h2>الدوائر الانتخابية</h2>
+
+<p>
+تعريف الدوائر الانتخابية وتوزيع المقاعد
+</p>
+
+</a>
+
+<a href="{{ url_for('admin.create_subdistrict') }}"
+   class="dashboard-card">
+
+<h2>الأقضية</h2>
+
+<p>
+تعريف الأقضية اللبنانية
+</p>
+
+</a>
+
+<a href="{{ url_for('admin.create_sect') }}"
+   class="dashboard-card">
+
+<h2>الطوائف والمذاهب</h2>
+
+<p>
+تعريف الطوائف والمذاهب
+</p>
+
+</a>
+
+<a href="{{ url_for('admin.create_tenant') }}"
+   class="dashboard-card">
+
+<h2>الأحزاب والزبائن</h2>
+
+<p>
+تعريف قواعد بيانات الأحزاب والزبائن
+</p>
+
+</a>
+
+<a href="{{ url_for('admin.upload_electors') }}"
+   class="dashboard-card">
+
+<h2>تحميل لوائح الناخبين</h2>
+
+<p>
+تحميل لوائح الناخبين من وزارة الداخلية
+</p>
+
+</a>
+
+<a href="{{ url_for('admin.view_electors') }}"
+   class="dashboard-card">
+
+<h2>عرض الناخبين</h2>
+
+<p>
+عرض وتعديل بيانات الناخبين
+</p>
+
+</a>
+
+<a href="{{ url_for('admin.upload_ballot_pens') }}"
+   class="dashboard-card">
+
+<h2>تحميل أقلام الاقتراع</h2>
+
+<p>
+استيراد أقلام الاقتراع من ملف Excel
+</p>
+
+</a>
+
+<a href="{{ url_for('admin.view_ballot_pens') }}"
+   class="dashboard-card">
+
+<h2>عرض أقلام الاقتراع</h2>
+
+<p>
+عرض وتعديل أقلام الاقتراع
+</p>
+
+</a>
+
+</div>
+
+</div>
+
 </body>
+
 </html>

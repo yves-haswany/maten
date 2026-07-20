@@ -12,66 +12,152 @@
 
 <style>
 
-body {
-    direction: rtl;
-    text-align: right;
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
 }
 
-table {
-    direction: rtl;
+/* ================= HEADER ================= */
+
+.page-header{
+    background:#0F5C6E;
+    color:white;
+    text-align:center;
+    padding:20px;
 }
 
-th, td {
-    text-align: right;
+.page-header h1{
+    margin:0;
+    font-size:42px;
 }
 
-.column-filter {
-    width: 90%;
-    margin-top: 5px;
-    padding: 5px;
+/* ================= CARD ================= */
+
+.page-container{
+    max-width:1500px;
+    margin:35px auto;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+    padding:30px;
 }
 
-header {
-    direction: rtl;
+/* ================= TOP BUTTONS ================= */
+
+.top-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+    flex-wrap:wrap;
+    gap:10px;
 }
 
-select {
-    cursor: pointer;
+.left-buttons,
+.right-buttons{
+    display:flex;
+    gap:10px;
+}
+
+.left-buttons a,
+.right-buttons a{
+    text-decoration:none;
+}
+
+/* ================= TABLE ================= */
+
+.table-wrapper{
+    overflow:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#0F5C6E;
+    color:white;
+    padding:10px;
+    white-space:nowrap;
+}
+
+td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    white-space:nowrap;
+}
+
+tr:nth-child(even){
+    background:#f9f9f9;
+}
+
+.column-filter{
+    width:100%;
+    margin-top:5px;
+}
+
+/* ================= ACTION BUTTONS ================= */
+
+.action-buttons{
+    display:flex;
+    gap:5px;
+}
+
+.edit-btn{
+    background:#0F5C6E;
+    color:white;
+    padding:6px 12px;
+    border-radius:6px;
+    text-decoration:none;
+}
+
+.delete-btn{
+    background:#d9534f;
+    color:white;
+    padding:6px 12px;
+    border-radius:6px;
+    text-decoration:none;
+}
+
+.flash-message{
+    background:#dff0d8;
+    color:#3c763d;
+    padding:12px;
+    margin-bottom:20px;
+    border-radius:6px;
 }
 
 </style>
 
 </head>
 
+<body>
 
-<body class="bg-gray-100 min-h-screen p-6">
+<div class="page-header">
 
+    <h1>أقلام الاقتراع</h1>
 
-<header class="flex justify-between items-center mb-6">
+</div>
 
-    <h1 class="text-3xl font-bold">
-        أقلام الاقتراع
-    </h1>
+<div class="page-container">
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category,message in messages %}
 
-    <div>
+<div class="flash-message">
+{{ message }}
+</div>
 
-        <a href="{{ url_for('admin.upload_ballot_pens') }}"
-           class="submit-button">
+{% endfor %}
+{% endif %}
+{% endwith %}
 
-            رفع أقلام الاقتراع
+<div class="top-actions">
 
-        </a>
-
-
-        <a href="{{ url_for('admin.delete_all_ballot_pens') }}"
-           class="logout-button"
-           onclick="return confirm('هل أنت متأكد من حذف جميع أقلام الاقتراع؟ لا يمكن التراجع عن هذا الإجراء');">
-
-            حذف جميع الأقلام
-
-        </a>
-
+    <div class="right-buttons">
 
         <a href="{{ url_for('admin.dashboard') }}"
            class="logout-button">
@@ -82,157 +168,122 @@ select {
 
     </div>
 
-</header>
+    <div class="left-buttons">
 
+        <a href="{{ url_for('admin.upload_ballot_pens') }}"
+           class="submit-button">
 
+            رفع أقلام الاقتراع
 
-{% with messages = get_flashed_messages(with_categories=true) %}
+        </a>
 
-{% if messages %}
+        <a href="{{ url_for('admin.delete_all_ballot_pens') }}"
+           class="logout-button"
+           onclick="return confirm('هل أنت متأكد من حذف جميع أقلام الاقتراع؟');">
 
-{% for category, message in messages %}
+            حذف جميع الأقلام
 
-<div class="flash-message">
+        </a>
 
-{{ message }}
+    </div>
 
 </div>
 
-{% endfor %}
-
-{% endif %}
-
-{% endwith %}
-
-
-
-<div class="table-container">
-
+<div class="table-wrapper">
 
 <table id="ballotPenTable">
-
 
 <thead>
 
 <tr>
 
-
 <th>
 الدائرة
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
-
-
 
 <th>
 القضاء
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
-
-
 
 <th>
 البلدة
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
-
-
 
 <th>
 مركز الاقتراع
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
 </th>
 
 <th>
-رقم الغرفة
-
+الغرفة
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
 
 <th>
 رمز القلم
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
-
-
 
 <th>
 الجنس
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
-
-
 
 <th>
 من سجل
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
 
 <th>
-الى سجل
-
+إلى سجل
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
-
-
 
 <th>
 الطوائف
-
+<br>
 <select class="column-filter">
 <option value="">الكل</option>
 </select>
-
 </th>
-
-
 
 <th>
 الإجراءات
 </th>
 
-
 </tr>
 
-
 </thead>
-
-
-
-
 
 <tbody>
 
@@ -240,100 +291,64 @@ select {
 
 <tr>
 
-    <!-- Da2ira -->
-    <td>
-        {{ pen.district.name if pen.district else "" }}
-    </td>
+<td>{{ pen.district.name if pen.district else "" }}</td>
 
-    <!-- Kazaa -->
-    <td>
-        {{ pen.subdistrict.name if pen.subdistrict else "" }}
-    </td>
+<td>{{ pen.subdistrict.name if pen.subdistrict else "" }}</td>
 
-    <!-- Balda -->
-    <td>
-        {{ pen.village or "" }}
-    </td>
+<td>{{ pen.village or "" }}</td>
 
-    <!-- Markaz -->
-    <td>
-        {{ pen.polling_center.name if pen.polling_center else "" }}
-    </td>
+<td>{{ pen.polling_center.name if pen.polling_center else "" }}</td>
 
-    <!-- ChamberNb -->
-    <td>
-        {{ pen.room.name if pen.room else "" }}
-    </td>
+<td>{{ pen.room.name if pen.room else "" }}</td>
 
-    <!-- KalamNb -->
-    <td>
-        {{ pen.serial_number }}
-    </td>
+<td>{{ pen.serial_number }}</td>
 
-    <!-- Gender -->
-    <td>
-        {{ pen.gender_type or "" }}
-    </td>
+<td>{{ pen.gender_type or "" }}</td>
 
-    <!-- From register -->
-    <td>
-        {% if pen.sects %}
-            {% for s in pen.sects %}
-                {{ s.register_from or "" }}<br>
-            {% endfor %}
-        {% endif %}
-    </td>
-
-    <!-- To register -->
-    <td>
-        {% if pen.sects %}
-            {% for s in pen.sects %}
-                {{ s.register_to or "" }}<br>
-            {% endfor %}
-        {% endif %}
-    </td>
-
-    <!-- Sect -->
-    <td>
-    {% if pen.sects %}
-        {% for s in pen.sects %}
-            {{ s.sect.name }}
-
-            {% if s.sect.name in sect_aliases %}
-                ({{ sect_aliases[s.sect.name] }})
-            {% endif %}
-
-            <br>
-        {% endfor %}
-    {% else %}
-        -
-    {% endif %}
+<td>
+{% for s in pen.sects %}
+{{ s.register_from }}<br>
+{% endfor %}
 </td>
 
-    <td>
+<td>
+{% for s in pen.sects %}
+{{ s.register_to }}<br>
+{% endfor %}
+</td>
 
-        <div class="action-buttons">
+<td>
+{% for s in pen.sects %}
+{{ s.sect.name }}
+{% if s.sect.name in sect_aliases %}
+({{ sect_aliases[s.sect.name] }})
+{% endif %}
+<br>
+{% endfor %}
+</td>
 
-            <a href="{{ url_for('admin.edit_ballot_pen',
-                ballot_pen_id=pen.id) }}"
-               class="action-btn edit-btn">
+<td>
 
-                تعديل
+<div class="action-buttons">
 
-            </a>
+<a href="{{ url_for('admin.edit_ballot_pen', ballot_pen_id=pen.id) }}"
+   class="edit-btn">
 
-            <a href="{{ url_for('admin.delete_ballot_pen',
-                ballot_pen_id=pen.id) }}"
-               class="action-btn delete-btn"
-               onclick="return confirm('هل تريد حذف هذا القلم؟');">
+تعديل
 
-                حذف
+</a>
 
-            </a>
+<a href="{{ url_for('admin.delete_ballot_pen', ballot_pen_id=pen.id) }}"
+   class="delete-btn"
+   onclick="return confirm('هل تريد حذف هذا القلم؟');">
 
-        </div>
+حذف
 
-    </td>
+</a>
+
+</div>
+
+</td>
 
 </tr>
 
@@ -341,195 +356,85 @@ select {
 
 </tbody>
 
-
 </table>
-
 
 </div>
 
-
-
-
+</div>
 
 <script>
 
+/* Keep your existing filtering JavaScript exactly as it is */
 
-/*
-================================================
-CREATE DROPDOWN VALUES AUTOMATICALLY
-================================================
-*/
+const filters=document.querySelectorAll(".column-filter");
 
+filters.forEach((filter,index)=>{
 
-const filters = document.querySelectorAll(
-    ".column-filter"
-);
+let values=new Set();
 
+document.querySelectorAll("#ballotPenTable tbody tr").forEach(row=>{
 
+let cell=row.cells[index];
 
-filters.forEach((filter, index) => {
+if(cell){
 
+let value=cell.innerText.trim();
 
-    let values = new Set();
-
-
-
-    document.querySelectorAll(
-        "#ballotPenTable tbody tr"
-    )
-    .forEach(row => {
-
-
-        let cell = row.cells[index];
-
-
-        if(cell){
-
-            let value = cell.innerText.trim();
-
-
-            if(value){
-
-                values.add(value);
-
-            }
-
-        }
-
-
-    });
-
-
-
-
-    Array.from(values)
-    .sort()
-    .forEach(value => {
-
-
-        let option =
-        document.createElement("option");
-
-
-        option.value = value;
-
-
-        option.textContent = value;
-
-
-        filter.appendChild(option);
-
-
-    });
-
-
-
-});
-
-
-
-
-
-/*
-================================================
-FILTER TABLE
-================================================
-*/
-
-
-filters.forEach(filter => {
-
-
-    filter.addEventListener(
-        "change",
-        filterTable
-    );
-
-
-});
-
-
-
-
-
-function filterTable(){
-
-
-    const rows =
-    document.querySelectorAll(
-        "#ballotPenTable tbody tr"
-    );
-
-
-
-    rows.forEach(row => {
-
-
-
-        let visible = true;
-
-
-
-
-        filters.forEach((filter,index)=>{
-
-
-
-            let selected =
-            filter.value.trim();
-
-
-
-
-            if(!selected){
-
-                return;
-
-            }
-
-
-
-
-            let cell =
-            row.cells[index];
-
-
-
-            if(cell &&
-               cell.innerText.trim() !== selected)
-            {
-
-
-                visible = false;
-
-
-            }
-
-
-
-        });
-
-
-
-
-
-        row.style.display =
-        visible ? "" : "none";
-
-
-
-    });
-
-
+if(value) values.add(value);
 
 }
 
+});
+
+Array.from(values).sort().forEach(value=>{
+
+let option=document.createElement("option");
+
+option.value=value;
+
+option.textContent=value;
+
+filter.appendChild(option);
+
+});
+
+});
+
+filters.forEach(filter=>{
+
+filter.addEventListener("change",filterTable);
+
+});
+
+function filterTable(){
+
+const rows=document.querySelectorAll("#ballotPenTable tbody tr");
+
+rows.forEach(row=>{
+
+let visible=true;
+
+filters.forEach((filter,index)=>{
+
+const selected=filter.value.trim();
+
+if(!selected) return;
+
+if(row.cells[index].innerText.trim()!=selected){
+
+visible=false;
+
+}
+
+});
+
+row.style.display=visible?"":"none";
+
+});
+
+}
 
 </script>
-
-
-
-
 
 </body>
 

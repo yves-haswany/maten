@@ -2,39 +2,228 @@
 <html lang="ar" dir="rtl">
 
 <head>
+
 <meta charset="UTF-8">
 
 <title>الناخبون</title>
 
 <link rel="stylesheet"
-href="{{ url_for('static', filename='style.css') }}">
+      href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+/* ================= HEADER ================= */
+
+.page-header{
+    background:#0F5C6E;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.page-header h1{
+    margin:0;
+    font-size:42px;
+}
+
+/* ================= MAIN CARD ================= */
+
+.page-container{
+    max-width:1700px;
+    margin:35px auto;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+    padding:30px;
+}
+
+/* ================= BUTTONS ================= */
+
+.top-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.left-buttons,
+.right-buttons{
+    display:flex;
+    gap:10px;
+}
+
+.left-buttons a,
+.right-buttons a{
+    text-decoration:none;
+}
+
+/* ================= TABLE ================= */
+.table-wrapper{
+    overflow-x: scroll;
+    overflow-y: auto;
+
+    max-height: 75vh;
+
+    border:1px solid #ddd;
+
+    scrollbar-gutter: stable;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    white-space:nowrap;
+}
+
+th{
+    background:#0F5C6E;
+    color:white;
+    padding:10px;
+}
+
+td{
+    padding:8px;
+    border-bottom:1px solid #ddd;
+}
+
+tr:nth-child(even){
+    background:#f8f8f8;
+}
+
+.filter-row th{
+    background:#edf3f5;
+}
+
+.filter-row select{
+    width:100%;
+    padding:5px;
+    box-sizing:border-box;
+    cursor:pointer;
+}
+
+/* ================= FLASH ================= */
+
+.flash-message{
+    padding:12px;
+    margin-bottom:20px;
+    border-radius:6px;
+    background:#dff0d8;
+    color:#3c763d;
+}
+
+</style>
 
 </head>
 
 <body>
 
-<h2>
-قائمة الناخبين
-</h2>
+<div class="page-header">
 
+<h1>قائمة الناخبين</h1>
 
-<table border="1">
+</div>
+
+<div class="page-container">
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category,message in messages %}
+
+<div class="flash-message">
+{{ message }}
+</div>
+
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="top-actions">
+
+<div class="right-buttons">
+
+<a href="{{ url_for('admin.dashboard') }}"
+   class="logout-button">
+
+العودة
+
+</a>
+
+</div>
+
+<div class="left-buttons">
+
+<form method="POST"
+      action="{{ url_for('admin.delete_all_electors') }}"
+      onsubmit="return confirm('هل أنت متأكد من حذف جميع الناخبين؟');">
+
+<button
+type="submit"
+class="logout-button">
+
+حذف جميع الناخبين
+
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+<div class="table-wrapper">
+
+<table id="electorsTable">
 
 <thead>
 
 <tr>
-    <th>الرقم</th>
-    <th>الاسم</th>
-    <th>الأب</th>
-    <th>العائلة</th>
-    <th>الجنس</th>
-    <th>القضاء</th>
-    <th>البلدة</th>
-    <th>رقم السجل</th>
+
+<th>رقم الناخب</th>
+<th>الاسم</th>
+<th>الكنية قبل الزواج</th>
+<th>العائلة</th>
+<th>اسم الأب</th>
+<th>اسم الأم</th>
+<th>الجنس</th>
+<th>تاريخ الولادة</th>
+<th>المذهب الأصلي</th>
+<th>المذهب الحالي</th>
+<th>الدائرة</th>
+<th>القضاء</th>
+<th>البلدة</th>
+<th>السجل</th>
+<th>رقم السجل</th>
+<th>متوفى</th>
+<th>مسجل</th>
+
+</tr>
+
+<tr class="filter-row">
+
+{% for i in range(17) %}
+<th>
+
+<select onchange="filterTable()">
+
+<option value="">الكل</option>
+
+</select>
+
+</th>
+{% endfor %}
+
 </tr>
 
 </thead>
-
 
 <tbody>
 
@@ -42,45 +231,51 @@ href="{{ url_for('static', filename='style.css') }}">
 
 <tr>
 
-<td>
-{{ elector.elector_id }}
-</td>
+<td>{{ elector.elector_id }}</td>
 
+<td>{{ elector.first_name }}</td>
 
-<td>
-{{ elector.first_name }}
-</td>
+<td>{{ elector.surname }}</td>
 
+<td>{{ elector.family_name }}</td>
 
-<td>
-{{ elector.father_name }}
-</td>
+<td>{{ elector.father_name }}</td>
 
+<td>{{ elector.mother_name }}</td>
 
-<td>
-{{ elector.family_name }}
-</td>
+<td>{{ elector.gender }}</td>
 
+<td>{{ elector.dob }}</td>
 
-<td>
-{{ elector.gender }}
-</td>
+<td>{{ elector.birth_sect.name if elector.birth_sect else "" }}</td>
 
+<td>{{ elector.current_sect.name if elector.current_sect else "" }}</td>
 
-<td>
-{{ elector.district.name if elector.district else "" }}
-</td>
+<td>{{ elector.district.name if elector.district else "" }}</td>
 
+<td>{{ elector.subdistrict.name if elector.subdistrict else "" }}</td>
 
-<td>
-{{ elector.municipality }}
-</td>
+<td>{{ elector.municipality }}</td>
 
+<td>{{ elector.register }}</td>
+
+<td>{{ elector.register_number }}</td>
 
 <td>
-{{ elector.register_number }}
+{% if elector.is_dead %}
+نعم
+{% else %}
+لا
+{% endif %}
 </td>
 
+<td>
+{% if elector.registered %}
+نعم
+{% else %}
+لا
+{% endif %}
+</td>
 
 </tr>
 
@@ -90,6 +285,81 @@ href="{{ url_for('static', filename='style.css') }}">
 
 </table>
 
+</div>
+
+</div>
+
+<script>
+
+window.onload=function(){
+
+const table=document.getElementById("electorsTable");
+
+const selects=table.querySelectorAll(".filter-row select");
+
+selects.forEach(function(select,index){
+
+let values=new Set();
+
+table.querySelectorAll("tbody tr").forEach(function(row){
+
+values.add(row.cells[index].innerText.trim());
+
+});
+
+Array.from(values)
+.sort((a,b)=>a.localeCompare(b,'ar'))
+.forEach(function(value){
+
+if(value==="") return;
+
+let option=document.createElement("option");
+
+option.value=value;
+
+option.text=value;
+
+select.appendChild(option);
+
+});
+
+});
+
+};
+
+function filterTable(){
+
+const table=document.getElementById("electorsTable");
+
+const filters=table.querySelectorAll(".filter-row select");
+
+const rows=table.querySelectorAll("tbody tr");
+
+rows.forEach(function(row){
+
+let visible=true;
+
+filters.forEach(function(filter,index){
+
+const selected=filter.value.trim();
+
+const value=row.cells[index].innerText.trim();
+
+if(selected!=="" && value!==selected){
+
+visible=false;
+
+}
+
+});
+
+row.style.display=visible ? "" : "none";
+
+});
+
+}
+
+</script>
 
 </body>
 
