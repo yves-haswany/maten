@@ -6,100 +6,336 @@
 <title>Manage Districts</title>
 
 <style>
-/* ===== your CSS unchanged (kept as-is) ===== */
-body{font-family:Arial,sans-serif;background:#f4f6f8;padding:40px;margin:0;}
-.container{max-width:950px;margin:auto;background:white;padding:25px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);}
-h1,h2,h3{text-align:center;margin-bottom:20px;color:#333;}
-hr{margin:30px 0;border:none;border-top:1px solid #ddd;}
-label{display:block;margin-top:12px;margin-bottom:6px;font-weight:bold;}
-input,select{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;margin-bottom:10px;}
-textarea{width:100%;box-sizing:border-box;}
-button{border:none;border-radius:8px;cursor:pointer;}
-.btn{width:100%;padding:12px;background:#4a90e2;color:white;margin-top:15px;}
-.add-btn{width:100%;padding:10px;margin-top:10px;background:#28a745;color:white;}
-.small-btn{padding:8px 12px;border-radius:6px;color:white;}
-.edit{background:#28a745;}
-.delete{background:#dc3545;}
-.section{border:1px solid #ddd;border-radius:10px;padding:15px;margin-top:15px;}
-.row{display:flex;gap:10px;align-items:center;margin-top:10px;}
-.row input,.row select{flex:1;}
-.card{border:1px solid #ddd;border-radius:10px;padding:15px;margin-top:20px;}
-.list-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;}
-.list-row:last-child{border-bottom:none;}
-.sub-row{margin-left:25px;margin-top:8px;}
-.sect-row{margin-left:50px;color:#666;font-size:14px;}
-.hidden{display:none;}
-.flash{background:#d4edda;color:#155724;padding:12px;border-radius:8px;margin-bottom:20px;}
-.back{display:inline-block;margin-top:25px;text-decoration:none;}
+/* ================= BASE STYLES ================= */
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+/* ================= HEADER ================= */
+.page-header{
+    background:#0F5C6E;
+    color:white;
+    text-align:center;
+    padding:20px;
+    margin:-20px -20px 30px -20px;
+}
+
+.page-header h1{
+    margin:0;
+    font-size:42px;
+}
+
+/* ================= CONTAINER ================= */
+.page-container{
+    max-width:950px;
+    margin:auto;
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+}
+
+/* ================= TOP ACTIONS ================= */
+.top-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.logout-button{
+    background:#c62828;
+    color:white;
+    padding:10px 20px;
+    border-radius:6px;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+/* ================= FLASH ================= */
+.flash-message{
+    background:#dff0d8;
+    color:#3c763d;
+    padding:12px;
+    border-radius:6px;
+    margin-bottom:20px;
+}
+
+/* ================= FORM ELEMENTS ================= */
+label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:6px;
+    font-weight:bold;
+}
+
+input[type=text],
+input[type=number],
+textarea,
+select{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    box-sizing:border-box;
+    margin-bottom:10px;
+}
+
+textarea{
+    resize:vertical;
+}
+
+hr{
+    margin:35px 0;
+    border:none;
+    border-top:1px solid #ddd;
+}
+
+/* ================= BUTTONS ================= */
+.submit-button{
+    width:100%;
+    padding:12px;
+    background:#0F5C6E;
+    color:white;
+    border:none;
+    border-radius:6px;
+    font-size:16px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.submit-button:hover{
+    background:#0a4a59;
+}
+
+.add-btn{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    background:#28a745;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.add-btn:hover{
+    background:#218838;
+}
+
+.small-btn{
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    color:white;
+    font-weight:bold;
+}
+
+.small-btn.edit{
+    background:#0F5C6E;
+}
+
+.small-btn.delete{
+    background:#c62828;
+}
+
+.small-btn.edit:hover{
+    background:#0a4a59;
+}
+
+.small-btn.delete:hover{
+    background:#b71c1c;
+}
+
+/* ================= CARDS & SECTIONS ================= */
+.card{
+    margin-top:20px;
+    padding:20px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    background:#fafafa;
+}
+
+.section{
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:15px;
+    margin-top:15px;
+    background:white;
+}
+
+.section h4{
+    margin-top:0;
+    color:#0F5C6E;
+}
+
+.row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    padding:12px 0;
+    border-bottom:1px solid #e5e5e5;
+}
+
+.row:last-child{
+    border-bottom:none;
+}
+
+.row input,
+.row select{
+    flex:1;
+    margin-bottom:0;
+}
+
+.list-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 0;
+    border-bottom:1px solid #e5e5e5;
+    cursor:pointer;
+}
+
+.list-row:last-child{
+    border-bottom:none;
+}
+
+.list-row:hover{
+    background:#f0f0f0;
+}
+
+.hidden{
+    display:none;
+}
+
+/* ================= BUTTON ROW ================= */
+.button-row{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+}
+
+.button-row form{
+    flex:1;
+}
+
+.button-row .btn{
+    width:100%;
+}
+
+/* ================= BACK LINK ================= */
+.back-link{
+    display:inline-block;
+    margin-top:25px;
+    color:#0F5C6E;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.back-link:hover{
+    text-decoration:underline;
+}
+
+/* ================= SECT CONTAINER ================= */
+.sectContainer{
+    margin:10px 0;
+    padding:10px;
+    background:#f9f9f9;
+    border-radius:6px;
+}
+
+.sectContainer .row{
+    padding:8px 0;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px){
+    .row{
+        flex-wrap:wrap;
+    }
+    
+    .row input,
+    .row select{
+        min-width:100%;
+    }
+    
+    .button-row{
+        flex-wrap:wrap;
+    }
+}
+
 </style>
 
 </head>
 
 <body>
 
-<div class="container">
+<div class="page-container">
 
-<h1>إدارة الدوائر</h1>
+<!-- ================= HEADER ================= -->
+<div class="page-header">
+    <h1>إدارة الدوائر</h1>
+</div>
 
 <!-- ================= FLASH ================= -->
 {% with messages = get_flashed_messages() %}
 {% if messages %}
 {% for message in messages %}
-<div class="flash">{{ message }}</div>
+<div class="flash-message">{{ message }}</div>
 {% endfor %}
 {% endif %}
 {% endwith %}
 
-<!-- ================= JSON DATA FOR JS ================= -->
-<script id="subdistrict-data" type="application/json">
-    {{ subdistricts | tojson }}
-</script>
-
-<script id="sect-data" type="application/json">
-    {{ sects | tojson }}
-</script>
+<!-- ================= TOP ACTIONS ================= -->
+<div class="top-actions">
+    <h2>إنشاء دائرة جديدة</h2>
+    <a href="{{ url_for('admin.dashboard') }}" class="logout-button">
+        العودة إلى لوحة التحكم
+    </a>
+</div>
 
 <!-- ================= CREATE DISTRICT ================= -->
-<h2>إنشاء دائرة جديدة</h2>
-
 <form method="POST" id="createDistrictForm">
 
-<label>رمز الدائرة</label>
-<input type="text" name="code" required>
+    <label>رمز الدائرة</label>
+    <input type="text" name="code" required>
 
-<label>اسم الدائرة</label>
-<input type="text" name="name" required>
+    <label>اسم الدائرة</label>
+    <input type="text" name="name" required>
 
-<hr>
+    <hr>
 
-<h3>الأقضية وتوزيع المقاعد</h3>
+    <h3>الأقضية وتوزيع المقاعد</h3>
 
-<div id="subdistrictContainer"></div>
+    <div id="subdistrictContainer"></div>
 
-<button type="button" class="add-btn" id="addSubdistrictButton">
-+ إضافة قضاء
-</button>
+    <button type="button" class="add-btn" id="addSubdistrictButton">
+        + إضافة قضاء
+    </button>
 
-<button type="submit" class="btn">حفظ الدائرة</button>
+    <br><br>
+    <button type="submit" class="submit-button">حفظ الدائرة</button>
 
 </form>
 
 <hr>
 
-<!-- ================= MANAGE ================= -->
+<!-- ================= MANAGE DISTRICTS ================= -->
 <h2>إدارة الدوائر المسجلة</h2>
 
 <label>اختر دائرة</label>
-
 <select id="districtSelector">
-<option value="all">-- جميع الدوائر --</option>
-
-{% for district in districts %}
-<option value="{{ district.id }}">
-    {{ district.code }} - {{ district.name }}
-</option>
-{% endfor %}
-
+    <option value="all">-- جميع الدوائر --</option>
+    {% for district in districts %}
+    <option value="{{ district.id }}">
+        {{ district.code }} - {{ district.name }}
+    </option>
+    {% endfor %}
 </select>
 
 <!-- ================= LIST VIEW ================= -->
@@ -108,78 +344,57 @@ button{border:none;border-radius:8px;cursor:pointer;}
 <!-- ================= EDITOR ================= -->
 <div id="editor" class="card hidden">
 
-<h3 id="editorTitle"></h3>
+    <h3 id="editorTitle">تعديل الدائرة</h3>
 
-<form id="editDistrictForm">
+    <form id="editDistrictForm" method="POST">
 
-<input type="hidden" id="districtId">
+        <input type="hidden" id="districtId" name="district_id">
 
-<label>رمز الدائرة</label>
-<input type="text" id="editCode">
+        <label>رمز الدائرة</label>
+        <input type="text" id="editCode" name="code">
 
-<label>اسم الدائرة</label>
-<input type="text" id="editName">
+        <label>اسم الدائرة</label>
+        <input type="text" id="editName" name="name">
 
-<hr>
+        <hr>
 
-<h3>الأقضية</h3>
+        <h3>الأقضية</h3>
 
-<div id="editSubdistrictContainer"></div>
+        <div id="editSubdistrictContainer"></div>
 
-<button type="submit" class="btn edit">
-    تحديث الدائرة
-</button>
+        <div class="button-row">
+            <button type="submit" class="small-btn edit">تحديث الدائرة</button>
+        </div>
 
-</form>
+    </form>
 
-<form id="deleteDistrictForm">
-<button type="submit" class="btn delete">
-    حذف الدائرة
-</button>
-</form>
-
-</div>
+    <form id="deleteDistrictForm" method="POST">
+        <input type="hidden" id="deleteDistrictId" name="district_id">
+        <button type="submit" class="small-btn delete" style="width:100%;">حذف الدائرة</button>
+    </form>
 
 </div>
 
-<hr>
-
-<a class="back" href="{{ url_for('admin.dashboard') }}">
-العودة إلى لوحة التحكم
-</a>
+<a href="{{ url_for('admin.dashboard') }}" class="back-link">← العودة إلى لوحة التحكم</a>
 
 </div>
-
-</body>
-</html>
 
 <!-- ========================================= -->
 <!-- DATA FOR JAVASCRIPT                       -->
 <!-- ========================================= -->
 
-<script
-id="district-data"
-type="application/json">
-
-{{ districts|tojson|safe }}
-
+<script id="district-data" type="application/json">
+    {{ districts|tojson|safe }}
 </script>
 
-<script
-id="subdistrict-data"
-type="application/json">
-
-{{ subdistricts|tojson|safe }}
-
+<script id="subdistrict-data" type="application/json">
+    {{ subdistricts|tojson|safe }}
 </script>
 
-<script
-id="sect-data"
-type="application/json">
-
-{{ sects|tojson|safe }}
-
+<script id="sect-data" type="application/json">
+    {{ sects|tojson|safe }}
 </script>
+
 <script>
 
 /* ==========================================================
@@ -199,38 +414,18 @@ const districts = JSON.parse(
 );
 
 /* ==========================================================
-   DOM ELEMENTS (FIXED NAMES)
+   DOM ELEMENTS
 ========================================================== */
 
-const selector =
-    document.getElementById("districtSelector");
-
-const listView =
-    document.getElementById("listView");
-
-const editor =
-    document.getElementById("editor");
-
-const editCode =
-    document.getElementById("editCode");
-
-const editName =
-    document.getElementById("editName");
-
-const districtDetails =
-    document.getElementById("districtDetails");
-
-const editForm =
-    document.getElementById("editDistrictForm");
-
-const deleteForm =
-    document.getElementById("deleteDistrictForm");
-
-const subdistrictContainer =
-    document.getElementById("subdistrictContainer");
-
-const createForm =
-    document.getElementById("createDistrictForm");
+const selector = document.getElementById("districtSelector");
+const listView = document.getElementById("listView");
+const editor = document.getElementById("editor");
+const editCode = document.getElementById("editCode");
+const editName = document.getElementById("editName");
+const editForm = document.getElementById("editDistrictForm");
+const deleteForm = document.getElementById("deleteDistrictForm");
+const subdistrictContainer = document.getElementById("subdistrictContainer");
+const createForm = document.getElementById("createDistrictForm");
 
 /* ==========================================================
    INIT
@@ -260,20 +455,25 @@ function loadDistrict() {
 ========================================================== */
 
 function renderAll() {
-
     editor.classList.add("hidden");
-
     let html = "<h3>جميع الدوائر</h3>";
 
     districts.forEach(d => {
         html += `
-            <div class="row" onclick="selectDistrict(${d.id})" style="cursor:pointer">
+            <div class="list-row" onclick="selectDistrict(${d.id})">
                 <div>
                     <strong>${d.code}</strong> - ${d.name}
+                </div>
+                <div style="font-size:12px;color:#888;">
+                    ${d.subdistricts ? d.subdistricts.length : 0} أقضية
                 </div>
             </div>
         `;
     });
+
+    if (districts.length === 0) {
+        html += `<div style="color:#888;text-align:center;padding:20px;">لا توجد دوائر مسجلة</div>`;
+    }
 
     listView.innerHTML = html;
 }
@@ -288,110 +488,85 @@ function selectDistrict(id) {
 }
 
 /* ==========================================================
-   RENDER EDITOR (FIXED CORE ISSUE)
+   RENDER EDITOR
 ========================================================== */
 
 function renderDistrict(id) {
-
     const district = districts.find(d => d.id == id);
-
     if (!district) return;
 
     listView.innerHTML = "";
     editor.classList.remove("hidden");
 
-    /* -------------------------
-       FIX: populate fields
-    ------------------------- */
-
+    // Populate fields
     document.getElementById("districtId").value = district.id;
+    document.getElementById("deleteDistrictId").value = district.id;
     editCode.value = district.code;
     editName.value = district.name;
 
     editForm.action = "/admin/district/edit/" + district.id;
     deleteForm.action = "/admin/district/delete/" + district.id;
 
-    document.getElementById("deleteDistrictId").value = district.id;
-
-    /* -------------------------
-       preview
-    ------------------------- */
-
-    document.getElementById("selectedDistrictPreview").textContent =
-        `${district.code} - ${district.name}`;
-
-    /* -------------------------
-       CLEAR containers
-    ------------------------- */
-
+    // Clear and rebuild subdistricts
     const container = document.getElementById("editSubdistrictContainer");
-container.innerHTML = "";
+    container.innerHTML = "";
 
-district.subdistricts.forEach((sub, index) => {
-
-    const section = document.createElement("div");
-    section.className = "section";
-
-    section.innerHTML = `
-        <h4>قضاء ${index + 1}</h4>
-
-        <label>القضاء</label>
-        <select class="subdistrict-select">
-            ${buildSubdistrictOptions(sub.id)}
-        </select>
-
-        <label>عدد المقاعد</label>
-        <input type="number" class="subdistrict-seats" min="1" value="${sub.total_seats}">
-
-        <hr>
-
-        <h4>توزيع المقاعد حسب الطوائف</h4>
-
-        <div class="sectContainer"></div>
-
-        <button type="button" class="add-btn" onclick="addSect(this)">
-            + إضافة طائفة
-        </button>
-    `;
-
-    const sectContainer = section.querySelector(".sectContainer");
-
-    if (!sub.sects || sub.sects.length === 0) {
-
-        sectContainer.innerHTML = `
-            <div style="color:#888;font-size:14px">
-                لا يوجد طوائف مضافة
+    if (!district.subdistricts || district.subdistricts.length === 0) {
+        container.innerHTML = `
+            <div style="color:#888;padding:15px;text-align:center;">
+                لا توجد أقضية مضافة لهذه الدائرة
             </div>
         `;
-
-    } else {
-
-        sub.sects.forEach((sect, sIndex) => {
-
-            const row = document.createElement("div");
-            row.className = "row";
-
-            row.innerHTML = `
-                <label style="min-width:80px">طائفة ${sIndex + 1}</label>
-
-                <select class="sect-select">
-                    ${buildSectOptions(sect.id)}
-                </select>
-
-                <input type="number" class="sect-seats" min="1" value="${sect.seats}">
-
-                <button type="button" class="small-btn delete" onclick="removeSect(this)">
-                    X
-                </button>
-            `;
-
-            sectContainer.appendChild(row);
-        });
+        return;
     }
 
-    container.appendChild(section);
-})
-};
+    district.subdistricts.forEach((sub, index) => {
+        const section = document.createElement("div");
+        section.className = "section";
+
+        section.innerHTML = `
+            <h4>قضاء ${index + 1}</h4>
+            <label>القضاء</label>
+            <select class="subdistrict-select">
+                ${buildSubdistrictOptions(sub.id)}
+            </select>
+            <label>عدد المقاعد</label>
+            <input type="number" class="subdistrict-seats" min="1" value="${sub.total_seats || sub.seats || 1}">
+            <hr>
+            <h4>توزيع المقاعد حسب الطوائف</h4>
+            <div class="sectContainer"></div>
+            <button type="button" class="add-btn" onclick="addSect(this)">
+                + إضافة طائفة
+            </button>
+        `;
+
+        const sectContainer = section.querySelector(".sectContainer");
+
+        if (sub.sects && sub.sects.length > 0) {
+            sub.sects.forEach((sect, sIndex) => {
+                const row = document.createElement("div");
+                row.className = "row";
+                row.innerHTML = `
+                    <label style="min-width:60px;">طائفة ${sIndex + 1}</label>
+                    <select class="sect-select">
+                        ${buildSectOptions(sect.id)}
+                    </select>
+                    <input type="number" class="sect-seats" min="1" value="${sect.seats || 1}">
+                    <button type="button" class="small-btn delete" onclick="removeSect(this)">X</button>
+                `;
+                sectContainer.appendChild(row);
+            });
+        } else {
+            sectContainer.innerHTML = `
+                <div style="color:#888;font-size:14px;padding:5px;">
+                    لا توجد طوائف مضافة
+                </div>
+            `;
+        }
+
+        container.appendChild(section);
+    });
+}
 
 /* ==========================================================
    OPTIONS BUILDERS
@@ -399,7 +574,6 @@ district.subdistricts.forEach((sub, index) => {
 
 function buildSubdistrictOptions(selected = "") {
     let html = "";
-
     subdistrictOptions.forEach(sub => {
         html += `
             <option value="${sub.id}" ${selected == sub.id ? "selected" : ""}>
@@ -407,13 +581,11 @@ function buildSubdistrictOptions(selected = "") {
             </option>
         `;
     });
-
     return html;
 }
 
 function buildSectOptions(selected = "") {
     let html = "";
-
     sectOptions.forEach(sect => {
         html += `
             <option value="${sect.id}" ${selected == sect.id ? "selected" : ""}>
@@ -421,7 +593,6 @@ function buildSectOptions(selected = "") {
             </option>
         `;
     });
-
     return html;
 }
 
@@ -430,30 +601,22 @@ function buildSectOptions(selected = "") {
 ========================================================== */
 
 function addSubdistrict() {
-
     const section = document.createElement("div");
     section.className = "section";
 
     section.innerHTML = `
         <label>القضاء</label>
-
         <select class="subdistrict-select">
             ${buildSubdistrictOptions()}
         </select>
-
         <label>مجموع المقاعد</label>
-
         <input type="number" class="subdistrict-seats" min="1" value="1">
-
         <h4>توزيع المقاعد حسب الطائفة</h4>
-
         <div class="sectContainer"></div>
-
         <button type="button" class="add-btn" onclick="addSect(this)">
             + إضافة طائفة
         </button>
-
-        <button type="button" class="small-btn delete" onclick="removeSubdistrict(this)">
+        <button type="button" class="small-btn delete" onclick="removeSubdistrict(this)" style="margin-top:10px;">
             حذف القضاء
         </button>
     `;
@@ -466,29 +629,34 @@ function addSubdistrict() {
 ========================================================== */
 
 function addSect(button) {
-
     const container = button.parentElement.querySelector(".sectContainer");
+    // Remove "no sects" message if it exists
+    const noSectsMsg = container.querySelector('div[style*="color:#888"]');
+    if (noSectsMsg) noSectsMsg.remove();
 
     const row = document.createElement("div");
     row.className = "row";
-
     row.innerHTML = `
         <select class="sect-select">
             ${buildSectOptions()}
         </select>
-
         <input type="number" class="sect-seats" min="1" value="1">
-
-        <button type="button" class="small-btn delete" onclick="removeSect(this)">
-            X
-        </button>
+        <button type="button" class="small-btn delete" onclick="removeSect(this)">X</button>
     `;
-
     container.appendChild(row);
 }
 
 function removeSect(button) {
     button.parentElement.remove();
+    // Show "no sects" message if container becomes empty
+    const container = button.parentElement.parentElement;
+    if (container.children.length === 0) {
+        container.innerHTML = `
+            <div style="color:#888;font-size:14px;padding:5px;">
+                لا توجد طوائف مضافة
+            </div>
+        `;
+    }
 }
 
 function removeSubdistrict(button) {
@@ -496,49 +664,38 @@ function removeSubdistrict(button) {
 }
 
 /* ==========================================================
-   VALIDATION + SERIALIZE (UNCHANGED CORE)
+   VALIDATION + SERIALIZE
 ========================================================== */
 
 function validateDistrict() {
-
-    const sections = document.querySelectorAll(".section");
-
+    const sections = document.querySelectorAll("#subdistrictContainer .section");
     if (sections.length === 0) {
-        alert("Please add at least one subdistrict.");
+        alert("يرجى إضافة قضاء واحد على الأقل.");
         return false;
     }
 
     const selectedSubs = [];
-
     for (const section of sections) {
-
         const subId = section.querySelector(".subdistrict-select").value;
-
         if (selectedSubs.includes(subId)) {
-            alert("A subdistrict cannot be added twice.");
+            alert("لا يمكن إضافة نفس القضاء مرتين.");
             return false;
         }
-
         selectedSubs.push(subId);
 
-        const rows = section.querySelectorAll(".row");
-
+        const rows = section.querySelectorAll(".sectContainer .row");
         if (rows.length === 0) {
-            alert("Each subdistrict must contain at least one sect.");
+            alert("كل قضاء يجب أن يحتوي على طائفة واحدة على الأقل.");
             return false;
         }
 
         const usedSects = [];
-
         for (const row of rows) {
-
             const sectId = row.querySelector(".sect-select").value;
-
             if (usedSects.includes(sectId)) {
-                alert("Duplicate sect in the same subdistrict.");
+                alert("لا يمكن إضافة نفس الطائفة مرتين في نفس القضاء.");
                 return false;
             }
-
             usedSects.push(sectId);
         }
     }
@@ -547,29 +704,23 @@ function validateDistrict() {
 }
 
 function buildDistrictJSON() {
-
     const result = [];
-
-    document.querySelectorAll(".section").forEach(section => {
-
+    document.querySelectorAll("#subdistrictContainer .section").forEach(section => {
         const subdistrict = {
             subdistrict_id: parseInt(section.querySelector(".subdistrict-select").value),
             seats: parseInt(section.querySelector(".subdistrict-seats").value),
             sects: []
         };
 
-        section.querySelectorAll(".row").forEach(row => {
-
+        section.querySelectorAll(".sectContainer .row").forEach(row => {
             subdistrict.sects.push({
                 sect_id: parseInt(row.querySelector(".sect-select").value),
                 seats: parseInt(row.querySelector(".sect-seats").value)
             });
-
         });
 
         result.push(subdistrict);
     });
-
     return result;
 }
 
@@ -578,12 +729,12 @@ function buildDistrictJSON() {
 ========================================================== */
 
 createForm.addEventListener("submit", function (e) {
-
     if (!validateDistrict()) {
         e.preventDefault();
         return;
     }
 
+    // Remove old hidden input if exists
     const old = document.querySelector('input[name="data"]');
     if (old) old.remove();
 
@@ -591,19 +742,16 @@ createForm.addEventListener("submit", function (e) {
     hidden.type = "hidden";
     hidden.name = "data";
     hidden.value = JSON.stringify(buildDistrictJSON());
-
     createForm.appendChild(hidden);
 });
 
 /* ==========================================================
-   BUTTONS
+   BUTTON EVENTS
 ========================================================== */
 
-document.getElementById("addSubdistrictButton")
-    .addEventListener("click", addSubdistrict);
+document.getElementById("addSubdistrictButton").addEventListener("click", addSubdistrict);
 
 </script>
 
 </body>
-
 </html>

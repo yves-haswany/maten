@@ -1,264 +1,418 @@
-<!DOCTYPE html>
-<html>
+{% extends "shared/base.html" %}
 
-<head>
-<title>Manage Sects</title>
+{% block content %}
 
 <style>
 
 body{
-    font-family:Arial;
+    direction:rtl;
     background:#f4f6f8;
-    padding:40px;
+    margin:0;
+    font-family:Arial,sans-serif;
 }
 
-.container{
-    max-width:800px;
+/* ================= HEADER ================= */
+
+.page-header{
+    background:#0F5C6E;
+    color:white;
+    text-align:center;
+    padding:20px;
+    margin:-20px -20px 30px -20px;
+}
+
+.page-header h1{
+    margin:0;
+    font-size:42px;
+}
+
+/* ================= MAIN CARD ================= */
+
+.page-container{
+    max-width:900px;
     margin:auto;
     background:white;
-    padding:25px;
+    padding:30px;
     border-radius:12px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
 }
 
-h1{
-    text-align:center;
-    margin-bottom:20px;
+/* ================= TOP ================= */
+
+.top-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
 }
 
-input, select{
+/* ================= FORM ================= */
+
+label{
+    display:block;
+    font-weight:bold;
+    margin-top:15px;
+    margin-bottom:6px;
+}
+
+input,
+select{
     width:100%;
     padding:10px;
-    margin-bottom:10px;
     border:1px solid #ccc;
-    border-radius:8px;
+    border-radius:6px;
+    box-sizing:border-box;
 }
 
-button{
-    width:100%;
-    padding:10px;
-    border:none;
-    border-radius:8px;
-    background:#4a90e2;
-    color:white;
-    cursor:pointer;
+hr{
+    margin:35px 0;
 }
+
+/* ================= CARDS ================= */
 
 .card{
+    margin-top:20px;
+    background:#fafafa;
     border:1px solid #ddd;
-    padding:15px;
-    margin-top:15px;
-    border-radius:10px;
+    border-radius:8px;
+    padding:20px;
 }
 
 .row{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
-    padding:8px 0;
-    border-bottom:1px solid #eee;
+    padding:12px 0;
+    border-bottom:1px solid #e5e5e5;
 }
 
-.small-btn{
-    padding:8px 10px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
+.row:last-child{
+    border-bottom:none;
 }
-
-.delete{ background:#dc3545; color:white; }
-.edit{ background:#28a745; color:white; }
 
 .hidden{
     display:none;
 }
 
+/* ================= BUTTONS ================= */
+
+.button-row{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+}
+
+.small-btn{
+    border:none;
+    border-radius:6px;
+    color:white;
+    cursor:pointer;
+    padding:10px 18px;
+}
+
+.edit{
+    background:#0F5C6E;
+}
+
+.delete{
+    background:#c62828;
+}
+
+/* ================= FLASH ================= */
+
+.flash-message{
+    background:#dff0d8;
+    color:#3c763d;
+    padding:12px;
+    border-radius:6px;
+    margin-bottom:20px;
+}
+
 </style>
 
-</head>
+<div class="page-header">
 
-<body>
+<h1>تعريف الطوائف والمذاهب</h1>
 
-<div class="container">
+</div>
 
-<h1>تعريف مذهب</h1>
+<div class="page-container">
 
-<!-- CREATE -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category,message in messages %}
+
+<div class="flash-message">
+{{ message }}
+</div>
+
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="top-actions">
+
+<h2>إضافة مذهب جديد</h2>
+
+<a href="{{ url_for('admin.dashboard') }}"
+   class="logout-button">
+
+العودة
+
+</a>
+
+</div>
+
 <form method="POST">
 
-    <label>الطائفة</label>
-    <select name="religion">
-        <option value="مسيحي">مسيحي</option>
-        <option value="مسلم">مسلم</option>
-        <option value="مختلف">مختلف</option>
-    </select>
+<label>
 
-    <label>اسم المذهب</label>
-    <input type="text" name="name" required>
+الطائفة
 
-    <button type="submit">حفظ المذهب</button>
+</label>
+
+<select name="religion">
+
+<option value="مسيحي">مسيحي</option>
+<option value="مسلم">مسلم</option>
+<option value="مختلف">مختلف</option>
+
+</select>
+
+<label>
+
+اسم المذهب
+
+</label>
+
+<input
+type="text"
+name="name"
+required>
+
+<br><br>
+
+<button
+type="submit"
+class="submit-button">
+
+حفظ المذهب
+
+</button>
 
 </form>
 
 <hr>
 
-<h1>لائحة المذاهب</h1>
+<h2>
 
-<!-- FILTER -->
-<label>Select Sect</label>
-<select id="sectSelector" onchange="loadSect()">
+لائحة المذاهب
 
-    <option value="all">-- All Sects --</option>
+</h2>
 
-    {% for sect in sects %}
-        <option
-            value="{{ sect.id }}"
-            data-name="{{ sect.name }}"
-            data-religion="{{ sect.religion }}"
-        >
-            {{ sect.name }} ({{ sect.religion }})
-        </option>
-    {% endfor %}
+<label>
+
+اختر المذهب
+
+</label>
+
+<select
+id="sectSelector"
+onchange="loadSect()">
+
+<option value="all">
+
+-- جميع المذاهب --
+
+</option>
+
+{% for sect in sects %}
+
+<option
+value="{{ sect.id }}"
+data-name="{{ sect.name }}"
+data-religion="{{ sect.religion }}">
+
+{{ sect.name }} ({{ sect.religion }})
+
+</option>
+
+{% endfor %}
 
 </select>
 
-<!-- LIST VIEW -->
-<div id="listView" class="card"></div>
-
-<!-- EDIT PANEL -->
-<div id="editor" class="card hidden">
-
-    <form method="POST" id="editForm">
-
-        <input type="hidden" name="sect_id" id="sect_id">
-
-        <label>Name</label>
-        <input type="text" name="name" id="sect_name">
-
-        <label>Religion</label>
-        <select name="religion" id="sect_religion">
-            <option value="مسيحي">مسيحي</option>
-            <option value="مسلم">مسلم</option>
-            <option value="مختلف">مختلف</option>
-        </select>
-
-        <button class="small-btn edit" type="submit">
-            تحديث
-        </button>
-
-    </form>
-
-    <form method="POST" id="deleteForm">
-        <button class="small-btn delete" type="submit">
-            الغاء 
-        </button>
-    </form>
+<div
+id="listView"
+class="card">
 
 </div>
 
-<a href="{{ url_for('admin.dashboard') }}">عودة الى الصفحة الرئيسية</a>
+<div
+id="editor"
+class="card hidden">
+
+<h3>
+
+تعديل المذهب
+
+</h3>
+
+<form
+method="POST"
+id="editForm">
+
+<input
+type="hidden"
+name="sect_id"
+id="sect_id">
+
+<label>
+
+اسم المذهب
+
+</label>
+
+<input
+type="text"
+name="name"
+id="sect_name">
+
+<label>
+
+الطائفة
+
+</label>
+
+<select
+name="religion"
+id="sect_religion">
+
+<option value="مسيحي">مسيحي</option>
+<option value="مسلم">مسلم</option>
+<option value="مختلف">مختلف</option>
+
+</select>
+
+<div class="button-row">
+
+<button
+type="submit"
+class="small-btn edit">
+
+تحديث
+
+</button>
+
+</form>
+
+<form
+method="POST"
+id="deleteForm">
+
+<button
+type="submit"
+class="small-btn delete"
+onclick="return confirm('هل أنت متأكد من حذف هذا المذهب؟');">
+
+حذف
+
+</button>
+
+</form>
 
 </div>
 
-<!-- ✅ SAFE DATA FROM FLASK -->
+</div>
+
+</div>
+
 <script id="sects-data" type="application/json">
 {{ sects | tojson }}
 </script>
 
 <script>
 
-// =========================
-// SAFE LOAD
-// =========================
 const sects = JSON.parse(
-    document.getElementById("sects-data").textContent || "[]"
+document.getElementById("sects-data").textContent || "[]"
 );
 
-// =========================
-// FLASK SAFE ROUTES (FIX)
-// =========================
-const editBase = "/admin/sect/edit/";
-const deleteBase = "/admin/sect/delete/";
+const editBase="/admin/sect/edit/";
+const deleteBase="/admin/sect/delete/";
 
-// =========================
-// ELEMENTS
-// =========================
-const select = document.getElementById("sectSelector");
-const editor = document.getElementById("editor");
-const listView = document.getElementById("listView");
+const select=document.getElementById("sectSelector");
+const editor=document.getElementById("editor");
+const listView=document.getElementById("listView");
 
-// =========================
-// INIT
-// =========================
-window.onload = function () {
-    select.value = "all";
-    renderAll();
+window.onload=function(){
+
+select.value="all";
+
+renderAll();
+
 };
 
-// =========================
-// ON CHANGE
-// =========================
-function loadSect() {
-    const id = select.value;
+function loadSect(){
 
-    if (id === "all") {
-        renderAll();
-    } else {
-        renderSingle(id);
-    }
+if(select.value==="all"){
+
+renderAll();
+
+}
+else{
+
+renderSingle(select.value);
+
 }
 
-// =========================
-// ALL SECTS
-// =========================
-function renderAll() {
-
-    editor.classList.add("hidden");
-
-    let html = "<h3>All Sects</h3>";
-
-    sects.forEach(sect => {
-        html += `
-            <div class="row">
-                <div>
-                    <strong>${sect.name}</strong> - ${sect.religion}
-                </div>
-            </div>
-        `;
-    });
-
-    listView.innerHTML = html;
 }
 
-// =========================
-// SINGLE SECT (EDIT MODE)
-// =========================
-function renderSingle(id) {
+function renderAll(){
 
-    const option = select.options[select.selectedIndex];
+editor.classList.add("hidden");
 
-    listView.innerHTML = "";
-    editor.classList.remove("hidden");
+let html="<h3>جميع المذاهب</h3>";
 
-    document.getElementById("sect_id").value = id;
-    document.getElementById("sect_name").value = option.dataset.name;
-    document.getElementById("sect_religion").value = option.dataset.religion;
+sects.forEach(function(sect){
 
-    // ✅ FIXED ROUTES
-    document.getElementById("editForm").action = editBase + id;
-    document.getElementById("deleteForm").action = deleteBase + id;
+html+=`
+<div class="row">
+
+<div>
+
+<strong>${sect.name}</strong>
+
+<br>
+
+<small>${sect.religion}</small>
+
+</div>
+
+</div>
+`;
+
+});
+
+listView.innerHTML=html;
+
 }
 
-// =========================
-// CLICK HELP
-// =========================
-function selectSect(id) {
-    select.value = id;
-    renderSingle(id);
+function renderSingle(id){
+
+const option=select.options[select.selectedIndex];
+
+listView.innerHTML="";
+
+editor.classList.remove("hidden");
+
+document.getElementById("sect_id").value=id;
+document.getElementById("sect_name").value=option.dataset.name;
+document.getElementById("sect_religion").value=option.dataset.religion;
+
+document.getElementById("editForm").action=editBase+id;
+document.getElementById("deleteForm").action=deleteBase+id;
+
 }
 
 </script>
 
-</body>
-</html>
+{% endblock %}
