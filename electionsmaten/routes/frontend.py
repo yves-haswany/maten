@@ -2,9 +2,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime
 import re
 from .. import db
-from ..models import Elector, Candidate, CandidateList, Vote, BallotPen, District, Tenant
+from ..models.master_models import Elector, BallotPen, District, Tenant
+from ..models.tenant_models import CandidateList, Candidate, Vote, BallotPenAccount, ElectorSubmission
 from werkzeug.security import check_password_hash
 import uuid
+from ..db.tenant_base import TenantBase
+from ..db.tenant_engine import get_tenant_session
+import traceback
 
 frontend_bp = Blueprint("frontend_bp", __name__)
 
@@ -21,55 +25,6 @@ def is_logged_in():
 # LOGIN (Ballot Pen ONLY)
 # ----------------------------
 
-@frontend_bp.route("/", methods=["GET", "POST"])
-def login():
-
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        pen = BallotPen.query.filter_by(username=username).first()
-
-        if not pen or not check_password_hash(pen.password, password):
-            return render_template("frontend/login.html", error="Invalid credentials")
-
-        # 🚫 BLOCK MULTIPLE LOGINS
-        if pen.active_session_token:
-            return render_template(
-                "frontend/login.html",
-                error="This account is already logged in on another device"
-            )
-
-        # ----------------------------
-        # EXTRACT TENANT / DISTRICT
-        # ----------------------------
-        match = re.match(r"(\d)[A-Z](\d+)D\d+", username)
-        if not match:
-            return render_template("frontend/login.html", error="Invalid username format")
-
-        tenant_id = int(match.group(1))
-        district_id = int(match.group(2))
-
-        # ----------------------------
-        # CREATE UNIQUE SESSION TOKEN
-        # ----------------------------
-        session_token = str(uuid.uuid4())
-        pen.active_session_token = session_token
-        db.session.commit()
-
-        # ----------------------------
-        # STORE IN SESSION
-        # ----------------------------
-        session.clear()
-        session["ballot_pen_id"] = pen.id
-        session["tenant_id"] = tenant_id
-        session["district_id"] = district_id
-        session["role"] = "ballot_pen"
-        session["session_token"] = session_token
-
-        return redirect(url_for("frontend_bp.dashboard"))
-
-    return render_template("frontend/login.html")
 @frontend_bp.before_app_request
 def check_single_session():
     if "ballot_pen_id" in session:
@@ -77,25 +32,12 @@ def check_single_session():
 
         if not pen or pen.active_session_token != session.get("session_token"):
             session.clear()
-            return redirect(url_for("frontend_bp.login"))
+            return redirect(url_for("auth.login"))
 
 
 # ----------------------------
 # LOGOUT
 # ----------------------------
-
-@frontend_bp.route("/logout")
-def logout():
-    if "ballot_pen_id" in session:
-        pen = BallotPen.query.get(session["ballot_pen_id"])
-
-        if pen:
-            pen.active_session_token = None
-            db.session.commit()
-
-    session.clear()
-    return redirect(url_for("frontend_bp.login"))
-
 
 # ----------------------------
 # DASHBOARD
@@ -103,16 +45,30 @@ def logout():
 
 @frontend_bp.route("/dashboard")
 def dashboard():
-
     if not is_logged_in():
-        return redirect(url_for("frontend_bp.login"))
+        return redirect(url_for("auth.login"))
 
-    ballot_pen = BallotPen.query.get(session.get("ballot_pen_id"))
-    if not ballot_pen:
-        return redirect(url_for("frontend_bp.login"))
+    ballot_pen_ids = session.get("ballot_pen_ids", [])
 
-    # Extract last 4 digits
-    ballot_number = ballot_pen.username[-4:]
+    if not ballot_pen_ids:
+        return redirect(url_for("auth.login"))
+
+    ballot_pens = (
+        BallotPen.query
+        .filter(BallotPen.id.in_(ballot_pen_ids))
+        .all()
+    )
+
+    if not ballot_pens:
+        return redirect(url_for("auth.login"))
+
+    # --------------------------------
+    # Use first ballot pen for header
+    # --------------------------------
+    ballot_pen = ballot_pens[0]
+
+    # Extract last 4 digits safely
+    ballot_number = str(ballot_pen.serial_number).zfill(4)
 
     # ----------------------------
     # DISTRICT NAME MAPPING
@@ -135,11 +91,12 @@ def dashboard():
         15: "دائرة جبل لبنان الرابعة",
     }
 
-    district_id = session.get("district_id")
+    district_id = ballot_pen.district_id
     district_name = district_names.get(district_id, "غير معروف")
 
     return render_template(
         "frontend/dashboard.html",
+        ballot_pens=ballot_pens,
         ballot_number=ballot_number,
         district_name=district_name
     )
@@ -151,9 +108,8 @@ def dashboard():
 
 @frontend_bp.route("/enter-electors")
 def enter_electors():
-
     if not is_logged_in():
-        return redirect(url_for("frontend_bp.login"))
+        return redirect(url_for("auth.login"))
 
     return render_template("frontend/enter_electors.html")
 
@@ -165,44 +121,343 @@ def enter_electors():
 @frontend_bp.route("/submit-elector", methods=["POST"])
 def submit_elector():
 
-    if not is_logged_in():
-        return redirect(url_for("frontend_bp.login"))
+    print("1. submit_elector() called")
 
-    elector_id_input = request.form.get("elector_id", "").strip()
+    if not is_logged_in():
+        print("Not logged in")
+        return redirect(url_for("auth.login"))
+
+
+    #################################################
+    # Elector ID
+    #################################################
+
+    elector_id_input = request.form.get(
+        "elector_id",
+        ""
+    ).strip()
+
+    print(
+        "2. Elector ID entered:",
+        elector_id_input
+    )
 
     if not elector_id_input:
-        flash("Elector ID required", "danger")
-        return redirect(url_for("frontend_bp.enter_electors"))
 
-    district_id = session.get("district_id")
+        flash(
+            "Elector ID required",
+            "danger"
+        )
 
-    # Optional: tenant_id if you store it in session
-    tenant_id = session.get("tenant_id")
+        return redirect(
+            url_for("frontend_bp.enter_electors")
+        )
 
-    existing = Elector.query.filter_by(
+
+    #################################################
+    # Logged-in ballot pens
+    #################################################
+
+    ballot_pen_ids = session.get(
+        "ballot_pen_ids",
+        []
+    )
+
+    print(
+        "3. Ballot pen IDs:",
+        ballot_pen_ids
+    )
+
+    if not ballot_pen_ids:
+
+        flash(
+            "No ballot pen assigned",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    #################################################
+    # Find elector (Master DB)
+    #################################################
+
+    # Get first ballot pen only for district filtering
+    first_ballot_pen = db.session.get(
+        BallotPen,
+        ballot_pen_ids[0]
+    )
+
+
+    if first_ballot_pen is None:
+
+        flash(
+            "Ballot pen not found",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    elector = Elector.query.filter_by(
         elector_id=elector_id_input,
-        tenant_id=tenant_id,
-        district_id=district_id
+        district_id=first_ballot_pen.district_id
     ).first()
 
-    if existing:
-        flash("Elector already registered", "warning")
-        return redirect(url_for("frontend_bp.enter_electors"))
 
-    new_elector = Elector(
-    elector_id=elector_id_input,
-    tenant_id=tenant_id,
-    district_id=session["district_id"],
-    submitted_at=datetime.utcnow(),
-    ballot_pen_id=session.get("ballot_pen_id")
-)
+    print(
+        "4. Elector:",
+        elector
+    )
 
-    db.session.add(new_elector)
-    db.session.commit()
 
-    flash("Elector added successfully", "success")
+    if elector is None:
 
-    return redirect(url_for("frontend_bp.enter_electors"))
+        flash(
+            "Elector not found in voter list",
+            "danger"
+        )
+
+        return redirect(
+            url_for("frontend_bp.enter_electors")
+        )
+
+
+    #################################################
+    # Verify elector belongs to one of user's pens
+    #################################################
+
+    valid_ballot_pen = None
+
+
+    for pen_id in ballot_pen_ids:
+
+        pen = db.session.get(
+            BallotPen,
+            pen_id
+        )
+
+        if not pen:
+            continue
+
+
+        # District check
+        if pen.district_id != elector.district_id:
+            continue
+
+
+        # Subdistrict check
+        if pen.subdistrict_id != elector.subdistrict_id:
+            continue
+
+
+        #################################################
+        # Register range validation
+        #################################################
+
+        for pen_sect in pen.sects:
+
+            if (
+                elector.register_number is not None
+                and pen_sect.register_from is not None
+                and pen_sect.register_to is not None
+                and
+                pen_sect.register_from
+                <= elector.register_number
+                <= pen_sect.register_to
+            ):
+
+                valid_ballot_pen = pen
+                break
+
+
+        if valid_ballot_pen:
+
+            break
+
+
+    if valid_ballot_pen is None:
+
+        flash(
+            "الناخب غير مسجل ضمن نطاق قلم الاقتراع الخاص بك",
+            "danger"
+        )
+
+        return redirect(
+            url_for("frontend_bp.enter_electors")
+        )
+
+
+    print(
+        "5. Valid ballot pen:",
+        valid_ballot_pen.id
+    )
+
+
+    #################################################
+    # Tenant session
+    #################################################
+
+    print(session)
+    print(
+        "tenant_db:",
+        session.get("tenant_db")
+    )
+
+
+    db_name = session.get(
+        "tenant_db"
+    )
+
+
+    if not db_name:
+
+        flash(
+            "Tenant database not found",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    tenant_session = get_tenant_session(
+        db_name
+    )
+
+
+    #################################################
+    # Duplicate submission?
+    #################################################
+
+    existing_submission = (
+        tenant_session.query(ElectorSubmission)
+        .filter_by(
+            elector_id=elector.id
+        )
+        .first()
+    )
+
+
+    if existing_submission:
+
+        flash(
+            "Elector has already voted",
+            "warning"
+        )
+
+        tenant_session.close()
+
+        return redirect(
+            url_for("frontend_bp.enter_electors")
+        )
+
+
+    #################################################
+    # Save submission in tenant DB
+    #################################################
+
+    try:
+
+        submission = ElectorSubmission(
+
+            elector_id=elector.id,
+
+            elector_code=elector.elector_id,
+
+            first_name=elector.first_name,
+
+            surname=elector.surname,
+
+
+            district_id=elector.district_id,
+
+            district_name=(
+                elector.district.name
+                if elector.district
+                else None
+            ),
+
+
+            subdistrict_id=elector.subdistrict_id,
+
+            subdistrict_name=(
+                elector.subdistrict.name
+                if elector.subdistrict
+                else None
+            ),
+
+
+            municipality=elector.municipality,
+
+
+            # The validated ballot pen
+            ballot_pen_id=valid_ballot_pen.id,
+
+
+            # Use ballot pen number, not elector
+            ballot_number=valid_ballot_pen.serial_number,
+
+
+            polling_center_name=(
+                valid_ballot_pen.polling_center.name
+                if valid_ballot_pen.polling_center
+                else None
+            ),
+
+
+            room_name=(
+                valid_ballot_pen.room.name
+                if valid_ballot_pen.room
+                else None
+            ),
+
+
+            submitted_at=datetime.utcnow()
+
+        )
+
+
+        tenant_session.add(
+            submission
+        )
+
+        tenant_session.commit()
+
+
+        flash(
+            "Elector submitted successfully",
+            "success"
+        )
+
+
+    except Exception:
+
+        tenant_session.rollback()
+
+        traceback.print_exc()
+
+        flash(
+            "Error saving elector",
+            "danger"
+        )
+
+
+    finally:
+
+        tenant_session.close()
+
+
+    return redirect(
+        url_for(
+            "frontend_bp.enter_electors"
+        )
+    )
 
 
 # ----------------------------
@@ -211,12 +466,10 @@ def submit_elector():
 
 @frontend_bp.route("/cancel-elector", methods=["POST"])
 def cancel_elector():
-
     if not is_logged_in():
-        return redirect(url_for("frontend_bp.login"))
+        return redirect(url_for("auth.login"))
 
     flash("Elector entry cancelled")
-
     return redirect(url_for("frontend_bp.enter_electors"))
 
 
@@ -228,19 +481,97 @@ def cancel_elector():
 def view_electors():
 
     if not is_logged_in():
-        return redirect(url_for("frontend_bp.login"))
+        return redirect(url_for("auth.login"))
 
-    tenant_id = session.get("tenant_id")
-    district_id = session.get("district_id")
-    ballot_pen_id = session.get("ballot_pen_id")
-    electors = Elector.query.filter_by(
-        tenant_id=session["tenant_id"], 
-        district_id=session["district_id"],   # ✅ FIX
-        ballot_pen_id=session["ballot_pen_id"]
-    ).order_by(Elector.submitted_at.desc()).all()
+    ballot_pen_ids = session.get(
+        "ballot_pen_ids",
+        []
+    )
+
+    if not ballot_pen_ids:
+        flash(
+            "No ballot pens assigned to this account",
+            "danger"
+        )
+        return redirect(
+            url_for("auth.login")
+        )
 
 
-    return render_template("frontend/view_electors.html", electors=electors)
+    #################################################
+    # Tenant session
+    #################################################
+
+    db_name = session.get("tenant_db")
+
+    if not db_name:
+
+        flash(
+            "Tenant database not found",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    tenant_session = get_tenant_session(
+        db_name
+    )
+
+
+    try:
+
+        submissions = (
+            tenant_session.query(ElectorSubmission)
+            .filter(
+                ElectorSubmission.ballot_pen_id.in_(
+                    ballot_pen_ids
+                )
+            )
+            .order_by(
+                ElectorSubmission.submitted_at.desc()
+            )
+            .all()
+        )
+
+
+        #################################################
+        # Master DB - ballot pen information
+        #################################################
+
+        ballot_pen = db.session.get(
+            BallotPen,
+            ballot_pen_ids[0]
+        )
+
+
+        district_name = (
+            ballot_pen.district.name
+            if ballot_pen and ballot_pen.district
+            else ""
+        )
+
+
+        ballot_number = (
+            str(ballot_pen.serial_number).zfill(4)
+            if ballot_pen
+            else ""
+        )
+
+
+        return render_template(
+            "frontend/view_electors.html",
+            electors=submissions,
+            district_name=district_name,
+            ballot_number=ballot_number
+        )
+
+
+    finally:
+
+        tenant_session.close()
 
 
 # ----------------------------
@@ -251,13 +582,165 @@ def view_electors():
 def cast_vote():
 
     if not is_logged_in():
-        return redirect(url_for("frontend_bp.login"))
+        return redirect(url_for("auth.login"))
 
-    lists = CandidateList.query.filter_by(
-        district_id=session["district_id"]
-    ).all()
 
-    return render_template("frontend/vote.html", lists=lists)
+    # ---------------------------------
+    # Get logged-in ballot pen
+    # ---------------------------------
+
+    ballot_pen_ids = session.get(
+        "ballot_pen_ids",
+        []
+    )
+
+
+    if not ballot_pen_ids:
+
+        flash(
+            "No ballot pens assigned",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    ballot_pen_id = ballot_pen_ids[0]
+
+
+    # ---------------------------------
+    # Get ballot pen from master DB
+    # ---------------------------------
+
+    ballot_pen = db.session.get(
+        BallotPen,
+        ballot_pen_id
+    )
+
+
+    if not ballot_pen:
+
+        flash(
+            "Ballot pen not found",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    # ---------------------------------
+    # Find tenant
+    # ---------------------------------
+
+    tenant = None
+
+    for t in ballot_pen.district.tenants:
+
+        tenant = t
+
+        break
+
+
+    if tenant is None:
+
+        flash(
+            "Tenant not found",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    try:
+
+        # ---------------------------------
+        # Count submitted electors
+        # ---------------------------------
+
+        elector_count = (
+            tenant_session.query(ElectorSubmission)
+            .filter_by(
+                ballot_pen_id=ballot_pen_id
+            )
+            .count()
+        )
+
+
+        # ---------------------------------
+        # Count votes already submitted
+        # ---------------------------------
+
+        vote_count = (
+            tenant_session.query(Vote)
+            .filter_by(
+                ballot_pen_id=ballot_pen_id
+            )
+            .count()
+        )
+
+
+        print(
+            "Electors submitted:",
+            elector_count
+        )
+
+        print(
+            "Votes submitted:",
+            vote_count
+        )
+
+
+        # ---------------------------------
+        # Prevent extra votes
+        # ---------------------------------
+
+        if vote_count >= elector_count:
+
+            flash(
+                "لا يمكن تسجيل اقتراع جديد. تم تسجيل الاقتراع لجميع الناخبين المدخلين.",
+                "warning"
+            )
+
+            return redirect(
+                url_for("frontend_bp.dashboard")
+            )
+
+
+        # ---------------------------------
+        # Load candidate lists
+        # ---------------------------------
+
+        lists = (
+            tenant_session.query(CandidateList)
+            .filter_by(
+                district_id=ballot_pen.district_id
+            )
+            .all()
+        )
+
+
+        return render_template(
+            "frontend/vote.html",
+            lists=lists,
+            elector_count=elector_count,
+            vote_count=vote_count
+        )
+
+
+    finally:
+
+        tenant_session.close()
 
 
 # ----------------------------
@@ -266,20 +749,52 @@ def cast_vote():
 
 @frontend_bp.route("/get-candidates/<int:list_id>")
 def get_candidates(list_id):
+    if not is_logged_in():
+        return {"error": "Not authorized", "candidates": []}, 401
 
-    candidates = Candidate.query.filter_by(
-        candidate_list_id=list_id
-    ).all()
+    ballot_pen_ids = session.get("ballot_pen_ids", [])
 
-    return {
-        "candidates": [
-            {
-                "candidate_id": c.id,
-                "name": c.name
-            }
-            for c in candidates
-        ]
-    }
+    if not ballot_pen_ids:
+        return {"error": "No ballot pen assigned", "candidates": []}, 400
+
+    # Get ballot pen
+    ballot_pen = BallotPen.query.get(ballot_pen_ids[0])
+
+    if not ballot_pen:
+        return {"error": "Ballot pen not found", "candidates": []}, 400
+
+    # Find tenant from district
+    tenant = None
+    for t in ballot_pen.district.tenants:
+        tenant = t
+        break
+
+    if not tenant:
+        return {"error": "Tenant not found", "candidates": []}, 400
+
+    tenant_session = get_tenant_session(tenant.db_name)
+
+    try:
+        candidates = tenant_session.query(Candidate).filter_by(
+            candidate_list_id=list_id
+        ).all()
+
+        return {
+            "candidates": [
+                {
+                    "candidate_id": c.id,
+                    "name": c.name
+                }
+                for c in candidates
+            ]
+        }
+
+    except Exception as e:
+        print("GET CANDIDATES ERROR:", repr(e))
+        return {"error": str(e), "candidates": []}, 500
+
+    finally:
+        tenant_session.close()
 
 
 # ----------------------------
@@ -290,50 +805,255 @@ def get_candidates(list_id):
 def submit_vote():
 
     if not is_logged_in():
-        return {"error": "Not authorized"}, 401
 
-    # ✅ Normalize values
-    list_id = request.form.get("list_id") or None
-    candidate_id = request.form.get("candidate_id") or None
+        return {
+            "error": "Not authorized"
+        }, 401
 
-    ballot_pen_id = session.get("ballot_pen_id")
-    district_id = session.get("district_id")
 
-    if not ballot_pen_id or not district_id:
-        return {"error": "Session error"}
 
-    # Count electors (limit votes)
-    elector_count = Elector.query.filter_by(
-        district_id=district_id
-    ).count()
+    # ---------------------------------
+    # Get submitted values
+    # ---------------------------------
 
-    vote_count = Vote.query.filter_by(
-        ballot_pen_id=ballot_pen_id
-    ).count()
+    list_id = request.form.get(
+        "list_id"
+    ) or None
 
-    if vote_count >= elector_count:
-        return {"error": "Maximum number of votes reached"}
 
-    # ✅ Validation
-    if not list_id and candidate_id:
-        return {"error": "Select a list first"}
+    candidate_id = request.form.get(
+        "candidate_id"
+    ) or None
 
-    if list_id and candidate_id:
-        candidate = Candidate.query.get(candidate_id)
-        if not candidate or str(candidate.candidate_list_id) != str(list_id):
-            return {"error": "Invalid candidate selection"}
 
-    # ✅ Create vote (3 cases handled automatically)
-    vote = Vote(
-        list_id=int(list_id) if list_id else None,
-        candidate_id=int(candidate_id) if candidate_id else None,
-        ballot_pen_id=ballot_pen_id
+
+    # ---------------------------------
+    # Get logged-in ballot pen
+    # ---------------------------------
+
+    ballot_pen_ids = session.get(
+        "ballot_pen_ids",
+        []
     )
 
-    db.session.add(vote)
-    db.session.commit()
 
-    return {"success": True}
+    if not ballot_pen_ids:
+
+        return {
+            "error": "No ballot pen assigned"
+        }, 400
+
+
+
+    ballot_pen_id = ballot_pen_ids[0]
+
+
+
+    # ---------------------------------
+    # Get ballot pen from master DB
+    # ---------------------------------
+
+    ballot_pen = db.session.get(
+        BallotPen,
+        ballot_pen_id
+    )
+
+
+    if not ballot_pen:
+
+        return {
+            "error": "Ballot pen not found"
+        }, 400
+
+
+
+    # ---------------------------------
+    # Find tenant
+    # ---------------------------------
+
+    tenant = None
+
+
+    for t in ballot_pen.district.tenants:
+
+        tenant = t
+
+        break
+
+
+
+    if not tenant:
+
+        return {
+            "error": "Tenant not found"
+        }, 400
+
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+
+    try:
+
+
+        # ---------------------------------
+        # Count submitted electors
+        # Tenant DB
+        # ---------------------------------
+
+        elector_count = (
+            tenant_session.query(ElectorSubmission)
+            .filter_by(
+                ballot_pen_id=ballot_pen_id
+            )
+            .count()
+        )
+
+
+
+        # ---------------------------------
+        # Count existing votes
+        # Tenant DB
+        # ---------------------------------
+
+        vote_count = (
+            tenant_session.query(Vote)
+            .filter_by(
+                ballot_pen_id=ballot_pen_id
+            )
+            .count()
+        )
+
+
+
+        print(
+            "Elector count:",
+            elector_count
+        )
+
+
+        print(
+            "Vote count:",
+            vote_count
+        )
+
+
+
+        # ---------------------------------
+        # Block extra votes
+        # ---------------------------------
+
+        if vote_count >= elector_count:
+
+            return {
+                "error":
+                "لا يمكن تسجيل اقتراع جديد. تم الوصول إلى الحد الأقصى لعدد الناخبين."
+            }, 400
+
+
+
+        # ---------------------------------
+        # Validate selection
+        # ---------------------------------
+
+        if not list_id and candidate_id:
+
+            return {
+                "error":
+                "Select a list first"
+            }, 400
+
+
+
+        if list_id and candidate_id:
+
+
+            candidate = (
+                tenant_session.query(Candidate)
+                .filter_by(
+                    id=int(candidate_id)
+                )
+                .first()
+            )
+
+
+            if not candidate:
+
+                return {
+                    "error":
+                    "Candidate not found"
+                }, 400
+
+
+
+            if str(candidate.candidate_list_id) != str(list_id):
+
+                return {
+                    "error":
+                    "Invalid candidate selection"
+                }, 400
+
+
+
+        # ---------------------------------
+        # Create vote
+        # ---------------------------------
+
+        vote = Vote(
+
+            list_id=(
+                int(list_id)
+                if list_id
+                else None
+            ),
+
+
+            candidate_id=(
+                int(candidate_id)
+                if candidate_id
+                else None
+            ),
+
+
+            ballot_pen_id=ballot_pen_id
+
+        )
+
+
+        tenant_session.add(vote)
+
+
+        tenant_session.commit()
+
+
+
+        return {
+            "success": True
+        }
+
+
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "SUBMIT VOTE ERROR:",
+            repr(e)
+        )
+
+        return {
+            "error": str(e)
+        }, 500
+
+
+
+    finally:
+
+        tenant_session.close()
 
 
 # ----------------------------
@@ -342,9 +1062,8 @@ def submit_vote():
 
 @frontend_bp.route("/sorted-votes")
 def sorted_votes():
-
     if not is_logged_in():
-        return redirect(url_for("frontend_bp.login"))
+        return redirect(url_for("auth.login"))
 
     lists = CandidateList.query.filter_by(
         district_id=session["district_id"]
@@ -378,4 +1097,29 @@ def sorted_votes():
         "frontend/sorted_votes.html",
         lists=lists_data,
         candidates=candidates_data
+    )
+@frontend_bp.route("/ballot-pen-electors")
+def ballot_pen_electors():
+
+    if not is_logged_in():
+        return redirect(url_for("auth.login"))
+
+    ballot_pen_ids = session.get("ballot_pen_ids", [])
+
+    if not ballot_pen_ids:
+        flash("No ballot pen assigned", "danger")
+        return redirect(url_for("auth.login"))
+
+    electors = (
+        Elector.query
+        .filter(
+            Elector.ballot_pen_id.in_(ballot_pen_ids)
+        )
+        .order_by(Elector.elector_id)
+        .all()
+    )
+
+    return render_template(
+        "frontend/ballot_pen_electors.html",
+        electors=electors
     )

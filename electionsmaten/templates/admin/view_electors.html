@@ -67,15 +67,13 @@ body{
 }
 
 /* ================= TABLE ================= */
+
 .table-wrapper{
-    overflow-x: scroll;
-    overflow-y: auto;
-
-    max-height: 75vh;
-
+    overflow-x:scroll;
+    overflow-y:auto;
+    max-height:75vh;
     border:1px solid #ddd;
-
-    scrollbar-gutter: stable;
+    scrollbar-gutter:stable;
 }
 
 table{
@@ -187,6 +185,10 @@ class="logout-button">
 
 <tr>
 
+<th>الدائرة</th>
+<th>القضاء</th>
+<th>البلدة</th>
+
 <th>رقم الناخب</th>
 <th>الاسم</th>
 <th>الكنية قبل الزواج</th>
@@ -197,11 +199,10 @@ class="logout-button">
 <th>تاريخ الولادة</th>
 <th>المذهب الأصلي</th>
 <th>المذهب الحالي</th>
-<th>الدائرة</th>
-<th>القضاء</th>
-<th>البلدة</th>
+
 <th>السجل</th>
 <th>رقم السجل</th>
+<th>رقم القلم</th>
 <th>متوفى</th>
 <th>مسجل</th>
 
@@ -209,7 +210,7 @@ class="logout-button">
 
 <tr class="filter-row">
 
-{% for i in range(17) %}
+{% for i in range(18) %}
 <th>
 
 <select onchange="filterTable()">
@@ -231,6 +232,12 @@ class="logout-button">
 
 <tr>
 
+<td>{{ elector.district.name if elector.district else "" }}</td>
+
+<td>{{ elector.subdistrict.name if elector.subdistrict else "" }}</td>
+
+<td>{{ elector.municipality }}</td>
+
 <td>{{ elector.elector_id }}</td>
 
 <td>{{ elector.first_name }}</td>
@@ -251,16 +258,11 @@ class="logout-button">
 
 <td>{{ elector.current_sect.name if elector.current_sect else "" }}</td>
 
-<td>{{ elector.district.name if elector.district else "" }}</td>
-
-<td>{{ elector.subdistrict.name if elector.subdistrict else "" }}</td>
-
-<td>{{ elector.municipality }}</td>
-
 <td>{{ elector.register }}</td>
 
 <td>{{ elector.register_number }}</td>
 
+<td>{{ elector.ballot_number or "" }}</td>
 <td>
 {% if elector.is_dead %}
 نعم

@@ -1,34 +1,124 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Create Candidate List</title>
+    <title>تعريف قائمة مرشحين</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<script>
 
+document
+.getElementById("district_id")
+.addEventListener(
+    "change",
+    function(){
+
+        let districtId = this.value;
+
+        let subdistrictSelect =
+            document.getElementById(
+                "subdistrict_id"
+            );
+
+
+        // reset dropdown
+
+        subdistrictSelect.innerHTML =
+            `
+            <option value="">
+            -- اختر القضاء --
+            </option>
+            `;
+
+
+        if(!districtId){
+            return;
+        }
+
+
+        fetch(
+            "/tenant/subdistricts/" + districtId
+        )
+
+        .then(
+            response => response.json()
+        )
+
+        .then(
+            data => {
+
+                data.subdistricts.forEach(
+                    function(subdistrict){
+
+                        let option =
+                            document.createElement(
+                                "option"
+                            );
+
+
+                        option.value =
+                            subdistrict.id;
+
+
+                        option.textContent =
+                            subdistrict.name;
+
+
+                        subdistrictSelect.appendChild(
+                            option
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+    }
+);
+
+
+</script>
 <body>
 
 <div class="form-container">
 
-<h2>Create Candidate List</h2>
+<h2>إنشاء قائمة مرشحين</h2>
 
 <form method="POST">
 
+
 <div class="form-group">
-<label>List Name</label>
-<input type="text" name="name" required>
+<label>اسم القائمة</label>
+
+<input 
+    type="text" 
+    name="name" 
+    required
+>
+
 </div>
 
+
+
 <div class="form-group">
-<label>District</label>
 
-<select name="district_id" required>
+<label>الدائرة</label>
 
-<option value="">Select District</option>
+<select 
+    name="district_id" 
+    required
+>
+
+<option value="">
+-- اختر الدائرة --
+</option>
+
 
 {% for district in districts %}
 
 <option value="{{ district.id }}">
-{{ district.name }}
+    {{ district.name }}
 </option>
 
 {% endfor %}
@@ -37,13 +127,48 @@
 
 </div>
 
-<button type="submit">Create List</button>
+
+
+<div class="form-group">
+
+<label>القضاء</label>
+
+<select 
+    name="subdistrict_id" 
+    required
+>
+
+<option value="">
+-- اختر القضاء --
+</option>
+
+
+{% for subdistrict in subdistricts %}
+
+<option value="{{ subdistrict.id }}">
+    {{ subdistrict.name }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+
+<button type="submit">
+إنشاء قائمة
+</button>
+
 
 </form>
 
+
 <a href="{{ url_for('tenant.dashboard') }}" class="back-link">
-Back to Dashboard
+العودة إلى لوحة التحكم
 </a>
+
 
 </div>
 

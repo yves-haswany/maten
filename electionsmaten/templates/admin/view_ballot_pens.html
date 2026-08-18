@@ -289,70 +289,98 @@ tr:nth-child(even){
 
 {% for pen in ballot_pens %}
 
-<tr>
+    {% for s in pen.sects|sort(attribute='register_from') %}
 
-<td>{{ pen.district.name if pen.district else "" }}</td>
+    <tr>
 
-<td>{{ pen.subdistrict.name if pen.subdistrict else "" }}</td>
+        <td>
+            {{ pen.district.name if pen.district else "" }}
+        </td>
 
-<td>{{ pen.village or "" }}</td>
 
-<td>{{ pen.polling_center.name if pen.polling_center else "" }}</td>
+        <td>
+            {{ pen.subdistrict.name if pen.subdistrict else "" }}
+        </td>
 
-<td>{{ pen.room.name if pen.room else "" }}</td>
 
-<td>{{ pen.serial_number }}</td>
+        <td>
+            {{ pen.village or "" }}
+        </td>
 
-<td>{{ pen.gender_type or "" }}</td>
 
-<td>
-{% for s in pen.sects %}
-{{ s.register_from }}<br>
-{% endfor %}
-</td>
+        <td>
+            {{ pen.polling_center.name if pen.polling_center else "" }}
+        </td>
 
-<td>
-{% for s in pen.sects %}
-{{ s.register_to }}<br>
-{% endfor %}
-</td>
 
-<td>
-{% for s in pen.sects %}
-{{ s.sect.name }}
-{% if s.sect.name in sect_aliases %}
-({{ sect_aliases[s.sect.name] }})
-{% endif %}
-<br>
-{% endfor %}
-</td>
+        <td>
+            {{ pen.room.name if pen.room else "" }}
+        </td>
 
-<td>
 
-<div class="action-buttons">
+        <td>
+            {{ pen.serial_number }}
+        </td>
 
-<a href="{{ url_for('admin.edit_ballot_pen', ballot_pen_id=pen.id) }}"
-   class="edit-btn">
 
-تعديل
+        <td>
+            {{ pen.gender_type or "" }}
+        </td>
 
-</a>
 
-<a href="{{ url_for('admin.delete_ballot_pen', ballot_pen_id=pen.id) }}"
-   class="delete-btn"
-   onclick="return confirm('هل تريد حذف هذا القلم؟');">
+        <td>
+            {{ s.register_from }}
+        </td>
 
-حذف
 
-</a>
+        <td>
+            {{ s.register_to }}
+        </td>
 
-</div>
 
-</td>
+        <td>
 
-</tr>
+            {{ s.sect.name }}
 
-{% endfor %}
+            {% if s.sect.name in sect_aliases %}
+                ({{ sect_aliases[s.sect.name] }})
+            {% endif %}
+
+        </td>
+
+
+        <td>
+
+            <div class="action-buttons">
+
+                <a href="{{ url_for('admin.edit_ballot_pen',
+                    ballot_pen_id=pen.id) }}"
+                   class="edit-btn">
+
+                    تعديل
+
+                </a>
+
+
+                <a href="{{ url_for('admin.delete_ballot_pen',
+                    ballot_pen_id=pen.id) }}"
+                   class="delete-btn"
+                   onclick="return confirm('هل تريد حذف هذا القلم؟');">
+
+                    حذف
+
+                </a>
+
+            </div>
+
+        </td>
+
+
+    </tr>
+
+    {% endfor %}
+
+{% endfor %}  
 
 </tbody>
 

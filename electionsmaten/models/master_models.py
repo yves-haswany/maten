@@ -26,7 +26,23 @@ tenant_district = db.Table(
     )
 )
 
+user_ballot_pen = db.Table(
+    "user_ballot_pen",
 
+    db.Column(
+        "user_id",
+        db.Integer,
+        db.ForeignKey("user.id"),
+        primary_key=True
+    ),
+
+    db.Column(
+        "ballot_pen_id",
+        db.Integer,
+        db.ForeignKey("ballot_pen.id"),
+        primary_key=True
+    )
+)
 
 # =====================================================
 # USER
@@ -64,7 +80,11 @@ class User(db.Model):
         db.ForeignKey("district.id")
     )
 
-    ballot_pen_id = db.Column(db.Integer)
+    ballot_pens = db.relationship(
+        "BallotPen",
+        secondary=user_ballot_pen,
+        back_populates="users"
+    )
 
 
 # =====================================================
@@ -222,6 +242,10 @@ class District(db.Model):
         lazy = "selectin"
 
     )
+    ballot_pens = db.relationship(
+    "BallotPen",
+    back_populates="district"
+)
     def __repr__(self):
         return f"<District {self.code} - {self.name}>"
 
@@ -278,6 +302,10 @@ class SubDistrict(db.Model):
         lazy = "selectin"
 
     )
+    ballot_pens = db.relationship(
+    "BallotPen",
+    back_populates="subdistrict"
+)
     description = db.Column(
         db.String(255),
         nullable=True
@@ -430,19 +458,29 @@ class BallotPen(db.Model):
 
     sects = db.relationship(
         "BallotPenSect",
-        backref="ballot_pen",
-        cascade="all, delete-orphan"
+        back_populates="ballot_pen",
+        cascade="all, delete-orphan",
+        order_by="BallotPenSect.register_from"
     )
     district = db.relationship(
     "District",
-    backref="ballot_pens",
+    back_populates="ballot_pens",
     lazy="joined"
 )
 
     subdistrict = db.relationship(
     "SubDistrict",
-    backref="ballot_pens",
+    back_populates="ballot_pens",
     lazy="joined"
+)
+    users = db.relationship(
+        "User",
+        secondary=user_ballot_pen,
+        back_populates="ballot_pens"
+    )
+    electors = db.relationship(
+    "Elector",
+    back_populates="ballot_pen"
 )
 class BallotPenSect(db.Model):
     __tablename__ = "ballot_pen_sect"
@@ -475,6 +513,11 @@ class BallotPenSect(db.Model):
     register_count = db.Column(
         db.Integer
     )
+    ballot_pen = db.relationship(
+    "BallotPen",
+    back_populates="sects"
+)
+
 class GenderType(Enum):
     MIXED = "Mixed"
     MEN = "Men"
@@ -559,88 +602,157 @@ class Elector(db.Model):
 
     __tablename__ = "elector"
 
-    id = db.Column(db.Integer, primary_key=True)
-
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
     elector_id = db.Column(
+        db.String(120),
+        nullable=False,
+        index=True
+    )
 
-        String(120),
+    first_name = db.Column(
+        db.String(120)
+    )
 
-        nullable=False
+    surname = db.Column(
+        db.String(120)
+    )
 
+    family_name = db.Column(
+        db.String(120)
+    )
+
+    father_name = db.Column(
+        db.String(120)
+    )
+
+    mother_name = db.Column(
+        db.String(120)
     )
 
 
-    first_name = db.Column(db.String(120))
+    gender = db.Column(
+        db.String(10)
+    )
 
-    surname = db.Column(db.String(120))
-
-    family_name = db.Column(db.String(120))
-
-    father_name = db.Column(db.String(120))
-
-    mother_name = db.Column(db.String(120))
+    dob = db.Column(
+        db.Date
+    )
 
 
-    gender = db.Column(db.String(10))
-
-    dob = db.Column(db.Date)
+    #################################################
+    # Sect information
+    #################################################
 
     birth_sect_id = db.Column(
-    db.Integer,
-    db.ForeignKey("sect.id")
-)
+        db.Integer,
+        db.ForeignKey("sect.id"),
+        nullable=True
+    )
 
     current_sect_id = db.Column(
-    db.Integer,
-    db.ForeignKey("sect.id")
-)
+        db.Integer,
+        db.ForeignKey("sect.id"),
+        nullable=True
+    )
+
 
     birth_sect = db.relationship(
-    "Sect",
-    foreign_keys=[birth_sect_id]
-)
+        "Sect",
+        foreign_keys=[birth_sect_id]
+    )
 
     current_sect = db.relationship(
-    "Sect",
-    foreign_keys=[current_sect_id]
-)
+        "Sect",
+        foreign_keys=[current_sect_id]
+    )
 
+
+    #################################################
+    # Location information
+    #################################################
 
     district_id = db.Column(
-    db.Integer,
-    db.ForeignKey("district.id"),
-    nullable=False
-)
-    district = db.relationship("District")
+        db.Integer,
+        db.ForeignKey("district.id"),
+        nullable=False
+    )
+
+    district = db.relationship(
+        "District",
+        foreign_keys=[district_id]
+    )
+
 
     subdistrict_id = db.Column(
-    db.Integer,
-    db.ForeignKey("subdistrict.id"),
-    nullable=False
+        db.Integer,
+        db.ForeignKey("subdistrict.id"),
+        nullable=False
+    )
+
+    subdistrict = db.relationship(
+        "SubDistrict",
+        foreign_keys=[subdistrict_id]
+    )
+
+
+    register = db.Column(
+        db.String(120)
+    )
+
+    register_number = db.Column(
+        db.Integer
+    )
+
+
+    municipality = db.Column(
+        db.String(120)
+    )
+
+    address = db.Column(
+        db.String(255)
+    )
+
+
+    #################################################
+    # Status
+    #################################################
+
+    is_dead = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+    registered = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+
+    #################################################
+    # Ballot Pen
+    #################################################
+
+    ballot_pen_id = db.Column(
+        db.Integer,
+        db.ForeignKey("ballot_pen.id"),
+        nullable=True
+    )
+
+    ballot_pen = db.relationship(
+    "BallotPen",
+    back_populates="electors"
 )
-    subdistrict = db.relationship("SubDistrict")
 
-
-    register = db.Column(db.String(120))
-
-    register_number = db.Column(db.Integer)
-
-
-    municipality = db.Column(db.String(120))
-
-    address = db.Column(db.String(255))
-
-
-    is_dead = db.Column(db.Boolean)
-
-    registered = db.Column(db.Boolean)
-
+    ballot_number = db.Column(db.Integer)
+    #################################################
+    # Audit
+    #################################################
 
     uploaded_at = db.Column(
-
         db.DateTime,
-
         default=datetime.utcnow
-
     )

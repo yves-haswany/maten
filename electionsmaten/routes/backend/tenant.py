@@ -9,27 +9,29 @@ from flask import (
     Response,
     abort
 )
-
+from sqlalchemy.orm import joinedload
 from werkzeug.security import (
     check_password_hash,
     generate_password_hash
 )
-
+from collections import OrderedDict
 from sqlalchemy import func, distinct
 
 from io import StringIO
 import csv
 
 from ... import db
-
+from flask import jsonify
 from ...models.master_models import (
+    Sect,
     Tenant,
     District,
     BallotPen,
     Party,
     User,
     tenant_district,
-    Elector
+    Elector,
+    SubdistrictSectSeat,SubDistrict
 )
 
 from ...models.tenant_models import (
@@ -38,7 +40,8 @@ from ...models.tenant_models import (
     Vote,
     BallotPenAccount
 )
-
+from ...db.tenant_engine import get_tenant_session
+from ...db.master_db import db
 tenant_bp = Blueprint(
     "tenant",
     __name__,
@@ -163,7 +166,7 @@ def dashboard():
     tenant = get_current_tenant()
 
     if tenant is None:
-        return redirect(url_for("tenant.login"))
+        return redirect(url_for("auth.login"))
 
     districts = tenant.districts
 
@@ -288,7 +291,7 @@ def view_districts():
 # BALLOT PEN CREDENTIALS
 # ==========================================================
 
-@tenant_bp.route("/ballot-pens", methods=["GET"])
+@tenant_bp.route("/ballot-pens")
 def ballot_pens():
 
     tenant = get_current_tenant()
@@ -296,28 +299,48 @@ def ballot_pens():
     if tenant is None:
         return redirect(url_for("tenant.login"))
 
-    districts = get_selected_districts(tenant)
-
-    district_ids = [d.id for d in districts]
-
-    ballot_pens = (
+    pens = (
         BallotPen.query
-        .filter(BallotPen.district_id.in_(district_ids))
         .order_by(
             BallotPen.district_id,
-            BallotPen.number
+            BallotPen.subdistrict_id,
+            BallotPen.village,
+            BallotPen.polling_center_id,
+            BallotPen.room_id,
+            BallotPen.serial_number
         )
         .all()
     )
 
-    return render_template(
-        "tenant/ballot_pens.html",
-        ballot_pens=ballot_pens,
-        districts=tenant.districts,
-        selected_district=request.args.get(
-            "district_id",
-            type=int
+    grouped_pens = OrderedDict()
+
+    for pen in pens:
+
+        key = (
+            pen.district_id,
+            pen.subdistrict_id,
+            pen.village,
+            pen.polling_center_id,
+            pen.room_id,
+            pen.serial_number
         )
+
+        if key not in grouped_pens:
+            grouped_pens[key] = pen
+
+    tenant_session = get_tenant_session(tenant.db_name)
+
+    for pen in grouped_pens.values():
+
+        pen.account = (
+            tenant_session.query(BallotPenAccount)
+            .filter_by(ballot_pen_id=pen.id)
+            .first()
+        )
+
+    return render_template(
+        "tenant/generate_ballot_pens.html",
+        ballot_pens=list(grouped_pens.values())
     )
 # ==========================================================
 # GENERATE BALLOT PEN CREDENTIALS
@@ -345,6 +368,78 @@ def manage_ballot_pen_credentials():
         "tenant/ballot_pen_credentials.html",
         districts=districts
     )
+
+
+def get_polling_center_code(polling_center):
+    """
+    Generate English polling center code.
+    """
+
+    if not polling_center:
+        return "PC"
+
+
+    name = polling_center.name.strip()
+
+
+    # Manual mapping (recommended)
+    mappings = {
+        "مدرسة مار يوسف": "MY",
+        "ثانوية المتن": "MT",
+        "مدرسة البوشرية الرسمية": "BR",
+    }
+
+
+    if name in mappings:
+        return mappings[name]
+
+
+    # Fallback:
+    # Keep only English letters if available
+    english = "".join(
+        c for c in name.upper()
+        if c.isalpha() and c.isascii()
+    )
+
+
+    if english:
+        return english[:3]
+
+
+    # Final fallback
+    return f"PC{polling_center.id}"
+
+
+
+def get_room_code(room):
+
+    """
+    Generate room code.
+    Example:
+    غرفة رقم 1 -> R1
+    Room 2 -> R2
+    """
+
+    if not room:
+        return "R0"
+
+
+    name = room.name
+
+
+    import re
+
+    number = re.search(
+        r"\d+",
+        name
+    )
+
+
+    if number:
+        return f"R{number.group()}"
+
+
+    return f"R{room.id}"
 @tenant_bp.route(
     "/ballot-pens/<int:ballot_pen_id>/generate",
     methods=["POST"]
@@ -354,27 +449,86 @@ def generate_ballot_pen_credentials(ballot_pen_id):
     tenant = get_current_tenant()
 
     if tenant is None:
-        return redirect(url_for("tenant.login"))
+        return redirect(
+            url_for("tenant.login")
+        )
 
-    ballot_pen = BallotPen.query.get_or_404(ballot_pen_id)
+
+    ballot_pen = BallotPen.query.get_or_404(
+        ballot_pen_id
+    )
+
 
     if ballot_pen.district not in tenant.districts:
         abort(403)
 
-    account = BallotPenAccount.query.filter_by(
-        ballot_pen_id=ballot_pen.id
-    ).first()
+
+
+    # --------------------------------
+    # TENANT DATABASE SESSION
+    # --------------------------------
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+
+    # --------------------------------
+    # Generate stable username
+    #
+    # Example:
+    #
+    # Tenant 1
+    # District 13
+    # Polling Center MY
+    # Room 1
+    # Pen 1
+    #
+    # => 1A13MYR1P1
+    #
+    # --------------------------------
+
+    letter = get_tenant_letter(
+        tenant.id
+    )
+
+
+    polling_center_code = get_polling_center_code(
+        ballot_pen.polling_center
+    )
+
+
+    room_code = get_room_code(
+        ballot_pen.room
+    )
+
+
+    username = (
+        f"{tenant.id}"
+        f"{letter}"
+        f"{ballot_pen.district_id}"
+        f"{polling_center_code}"
+        f"{room_code}"
+        f"P{ballot_pen.serial_number}"
+    )
+
+
+
+    # --------------------------------
+    # Tenant BallotPenAccount
+    # --------------------------------
+
+    account = (
+        tenant_session.query(BallotPenAccount)
+        .filter_by(
+            username=username
+        )
+        .first()
+    )
+
 
     if account is None:
-
-        letter = get_tenant_letter(tenant.id)
-
-        username = (
-            f"{tenant.id}"
-            f"{letter}"
-            f"{ballot_pen.district_id}"
-            f"P{ballot_pen.number}"
-        )
 
         account = BallotPenAccount(
             ballot_pen_id=ballot_pen.id,
@@ -382,22 +536,94 @@ def generate_ballot_pen_credentials(ballot_pen_id):
             password=generate_password_hash(username)
         )
 
-        db.session.add(account)
+        tenant_session.add(account)
+
 
     else:
 
         account.password = generate_password_hash(
-            account.username
+            username
         )
+
+
+
+    # --------------------------------
+    # Master User
+    # --------------------------------
+
+    user = User.query.filter_by(
+        username=username,
+        role="ballot_pen"
+    ).first()
+
+
+    if user is None:
+
+        user = User(
+            username=username,
+            password=generate_password_hash(username),
+            role="ballot_pen"
+        )
+
+        db.session.add(user)
+
+        db.session.flush()
+
+
+
+    # --------------------------------
+    # Link pens belonging to the same
+    # physical ballot station
+    #
+    # Same:
+    # District
+    # Polling Center
+    # Room
+    # Serial Number
+    # Gender
+    #
+    # --------------------------------
+
+    related_pens = (
+        BallotPen.query
+        .filter_by(
+            district_id=ballot_pen.district_id,
+            polling_center_id=ballot_pen.polling_center_id,
+            room_id=ballot_pen.room_id,
+            serial_number=ballot_pen.serial_number,
+            gender_type=ballot_pen.gender_type
+        )
+        .all()
+    )
+
+
+    for pen in related_pens:
+
+        if pen not in user.ballot_pens:
+
+            user.ballot_pens.append(
+                pen
+            )
+
+
+
+    tenant_session.commit()
 
     db.session.commit()
 
+
+
     flash(
-        f"Credentials generated for Ballot Pen {ballot_pen.number}.",
+        f"Credentials generated for Ballot Pen {username}.",
         "success"
     )
 
-    return redirect(url_for("tenant.ballot_pens"))
+
+    return redirect(
+        url_for(
+            "tenant.ballot_pens"
+        )
+    )
 # ==========================================================
 # UPDATE BALLOT PEN PASSWORD
 # ==========================================================
@@ -469,31 +695,49 @@ def manage_lists():
     if tenant is None:
         return redirect(url_for("tenant.login"))
 
-    districts = get_selected_districts(tenant)
 
-    district_ids = [d.id for d in districts]
-
-    lists = (
-        CandidateList.query
-        .filter(
-            CandidateList.district_id.in_(district_ids)
-        )
-        .order_by(
-            CandidateList.district_id,
-            CandidateList.name
-        )
-        .all()
+    tenant_session = get_tenant_session(
+        tenant.db_name
     )
 
-    return render_template(
-        "tenant/manage_lists.html",
-        lists=lists,
-        districts=tenant.districts,
-        selected_district=request.args.get(
-            "district_id",
-            type=int
+
+    try:
+
+        lists = (
+            tenant_session.query(CandidateList)
+            .options(
+                joinedload(
+                    CandidateList.candidates
+                )
+            )
+            .order_by(
+                CandidateList.name
+            )
+            .all()
         )
-    )
+
+
+        districts = get_selected_districts(
+            tenant
+        )
+
+
+        district_map = {
+            d.id:d.name
+            for d in districts
+        }
+
+
+        return render_template(
+            "tenant/manage_lists.html",
+            lists=lists,
+            districts=districts,
+            district_map=district_map
+        )
+
+
+    finally:
+        tenant_session.close()
 # ==========================================================
 # CREATE LIST
 # ==========================================================
@@ -507,74 +751,231 @@ def create_list():
     tenant = get_current_tenant()
 
     if tenant is None:
-        return redirect(url_for("tenant.login"))
-
-    if request.method == "POST":
-
-        district_id = request.form.get(
-            "district_id",
-            type=int
-        )
-
-        if not tenant_has_district(
-            tenant,
-            district_id
-        ):
-            abort(403)
-
-        name = request.form.get(
-            "name",
-            ""
-        ).strip()
-
-        if not name:
-
-            flash(
-                "List name is required.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("tenant.create_list")
-            )
-
-        existing = CandidateList.query.filter_by(
-            district_id=district_id,
-            name=name
-        ).first()
-
-        if existing:
-
-            flash(
-                "A list with this name already exists.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("tenant.create_list")
-            )
-
-        candidate_list = CandidateList(
-            name=name,
-            district_id=district_id
-        )
-
-        db.session.add(candidate_list)
-        db.session.commit()
-
-        flash(
-            "List created successfully.",
-            "success"
-        )
-
         return redirect(
-            url_for("tenant.manage_lists")
+            url_for("tenant.login")
         )
 
-    return render_template(
-        "tenant/create_candidate_list.html",
-        districts=tenant.districts
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
     )
+
+
+    try:
+
+        districts = get_selected_districts(
+            tenant
+        )
+
+
+        if request.method == "POST":
+
+
+            ####################################################
+            # Read form data
+            ####################################################
+
+            district_id = request.form.get(
+                "district_id",
+                type=int
+            )
+
+
+            name = request.form.get(
+                "name",
+                ""
+            ).strip()
+
+
+
+            ####################################################
+            # Validate district
+            ####################################################
+
+            if not district_id:
+
+                flash(
+                    "District is required.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "tenant.manage_lists"
+                    )
+                )
+
+
+
+            ####################################################
+            # Validate tenant owns district
+            ####################################################
+
+            if not tenant_has_district(
+                tenant,
+                district_id
+            ):
+
+                abort(403)
+
+
+
+            ####################################################
+            # Validate list name
+            ####################################################
+
+            if not name:
+
+                flash(
+                    "List name is required.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "tenant.manage_lists"
+                    )
+                )
+
+
+
+            ####################################################
+            # Check duplicate list in district
+            ####################################################
+
+            existing = (
+                tenant_session.query(
+                    CandidateList
+                )
+                .filter_by(
+                    district_id=district_id,
+                    name=name
+                )
+                .first()
+            )
+
+
+            if existing:
+
+                flash(
+                    "A list with this name already exists in this district.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "tenant.manage_lists"
+                    )
+                )
+
+
+
+            ####################################################
+            # Create candidate list
+            ####################################################
+
+            candidate_list = CandidateList(
+                name=name,
+                district_id=district_id
+            )
+
+
+            tenant_session.add(
+                candidate_list
+            )
+
+
+            tenant_session.commit()
+
+
+
+            flash(
+                "List created successfully.",
+                "success"
+            )
+
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        ####################################################
+        # GET request
+        ####################################################
+
+        return render_template(
+            "tenant/create_candidate_list.html",
+            districts=districts
+        )
+
+
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "CREATE LIST ERROR:",
+            repr(e)
+        )
+
+        raise
+
+
+
+    finally:
+
+        tenant_session.close()
+@tenant_bp.route(
+    "/subdistricts/<int:district_id>"
+)
+def get_subdistricts(district_id):
+
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        abort(403)
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    try:
+
+        subdistricts = (
+            tenant_session.query(
+                SubDistrict
+            )
+            .filter_by(
+                district_id=district_id
+            )
+            .order_by(
+                SubDistrict.name
+            )
+            .all()
+        )
+
+
+        return {
+            "subdistricts": [
+                {
+                    "id": subdistrict.id,
+                    "name": subdistrict.name
+                }
+                for subdistrict in subdistricts
+            ]
+        }
+
+
+    finally:
+
+        tenant_session.close()
 # ==========================================================
 # EDIT LIST
 # ==========================================================
@@ -588,56 +989,106 @@ def edit_list(list_id):
     tenant = get_current_tenant()
 
     if tenant is None:
-        return redirect(url_for("tenant.login"))
+        return redirect(
+            url_for("tenant.login")
+        )
 
-    candidate_list = CandidateList.query.get_or_404(
-        list_id
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
     )
 
-    if not tenant_has_district(
-        tenant,
-        candidate_list.district_id
-    ):
-        abort(403)
 
-    if request.method == "POST":
+    try:
 
-        name = request.form.get(
-            "name",
-            ""
-        ).strip()
+        candidate_list = (
+            tenant_session.query(
+                CandidateList
+            )
+            .filter_by(
+                id=list_id
+            )
+            .first()
+        )
 
-        if not name:
+
+        if candidate_list is None:
+            abort(404)
+
+
+
+        if not tenant_has_district(
+            tenant,
+            candidate_list.district_id
+        ):
+            abort(403)
+
+
+
+        if request.method == "POST":
+
+            name = request.form.get(
+                "name",
+                ""
+            ).strip()
+
+
+            if not name:
+
+                flash(
+                    "اسم القائمة لا يمكن أن يكون فارغاً",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "tenant.edit_list",
+                        list_id=list_id
+                    )
+                )
+
+
+            candidate_list.name = name
+
+
+            tenant_session.commit()
+
 
             flash(
-                "List name cannot be empty.",
-                "danger"
+                "تم تعديل القائمة بنجاح",
+                "success"
             )
+
 
             return redirect(
                 url_for(
-                    "tenant.edit_list",
-                    list_id=list_id
+                    "tenant.manage_lists"
                 )
             )
 
-        candidate_list.name = name
 
-        db.session.commit()
 
-        flash(
-            "List updated successfully.",
-            "success"
+        return render_template(
+            "tenant/edit_list.html",
+            list=candidate_list
         )
 
-        return redirect(
-            url_for("tenant.manage_lists")
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "EDIT LIST ERROR:",
+            repr(e)
         )
 
-    return render_template(
-        "tenant/edit_list.html",
-        list=candidate_list
-    )
+        raise
+
+
+    finally:
+
+        tenant_session.close()
 # ==========================================================
 # DELETE LIST
 # ==========================================================
@@ -651,33 +1102,71 @@ def delete_list(list_id):
     tenant = get_current_tenant()
 
     if tenant is None:
-        return redirect(url_for("tenant.login"))
+        return redirect(
+            url_for("tenant.login")
+        )
 
-    candidate_list = CandidateList.query.get_or_404(
-        list_id
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
     )
 
-    if not tenant_has_district(
-        tenant,
-        candidate_list.district_id
-    ):
-        abort(403)
 
-    db.session.delete(candidate_list)
+    try:
 
-    db.session.commit()
+        candidate_list = (
+            tenant_session.query(
+                CandidateList
+            )
+            .filter_by(
+                id=list_id
+            )
+            .first()
+        )
 
-    flash(
-        "List deleted successfully.",
-        "success"
-    )
 
-    return redirect(
-        url_for("tenant.manage_lists")
-    )
+        if candidate_list is None:
+            abort(404)
+
+
+        tenant_session.delete(
+            candidate_list
+        )
+
+        tenant_session.commit()
+
+
+        flash(
+            "List deleted successfully.",
+            "success"
+        )
+
+
+        return redirect(
+            url_for(
+                "tenant.manage_lists"
+            )
+        )
+
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "DATABASE ERROR:",
+            repr(e)
+        )
+
+        raise
+
+
+    finally:
+
+        tenant_session.close()
 @tenant_bp.route(
     "/candidate/add/<int:list_id>",
-    methods=["POST"]
+    methods=["GET", "POST"]
 )
 def add_candidate(list_id):
 
@@ -688,42 +1177,230 @@ def add_candidate(list_id):
     if session.get("role") != "tenant":
         abort(403)
 
+    tenant = get_current_tenant()
 
-    tenant_id = session.get(
-        "tenant_id"
+    if tenant is None:
+        return redirect(
+            url_for("tenant.login")
+        )
+
+    master_session = db.session
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
     )
 
+    try:
 
-    ####################################################
-    # Validate candidate list ownership
-    ####################################################
+        ####################################################
+        # Validate candidate list
+        ####################################################
 
-    candidate_list = CandidateList.query.filter_by(
-        id=list_id,
-        tenant_id=tenant_id
-    ).first()
+        candidate_list = (
+            tenant_session.query(
+                CandidateList
+            )
+            .filter_by(
+                id=list_id
+            )
+            .first()
+        )
 
+        if candidate_list is None:
+            abort(404)
 
-    if not candidate_list:
-        abort(403)
+        ####################################################
+        # Display form
+        ####################################################
 
+        if request.method == "GET":
 
+            lists = (
+                tenant_session.query(
+                    CandidateList
+                )
+                .order_by(
+                    CandidateList.name
+                )
+                .all()
+            )
 
-    ####################################################
-    # Read form
-    ####################################################
+            available_sects = (
+                master_session.query(
+                    Sect
+                )
+                .join(
+                    SubdistrictSectSeat,
+                    Sect.id == SubdistrictSectSeat.sect_id
+                )
+                .filter(
+                    SubdistrictSectSeat.subdistrict_id ==
+                    candidate_list.subdistrict_id
+                )
+                .order_by(
+                    Sect.name
+                )
+                .all()
+            )
 
-    name = request.form.get(
-        "name",
-        ""
-    ).strip()
+            return render_template(
+                "tenant/create_candidate.html",
+                candidate_list=candidate_list,
+                lists=lists,
+                sects=available_sects
+            )
 
+        ####################################################
+        # Read form
+        ####################################################
 
-    if not name:
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        selected_list_id = request.form.get(
+            "list_id",
+            type=int
+        )
+
+        sect_id = request.form.get(
+            "sect_id",
+            type=int
+        )
+
+        ####################################################
+        # Validate input
+        ####################################################
+
+        if not name:
+
+            flash(
+                "Candidate name is required.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.add_candidate",
+                    list_id=list_id
+                )
+            )
+
+        ####################################################
+        # Validate selected list
+        ####################################################
+
+        selected_list = (
+            tenant_session.query(
+                CandidateList
+            )
+            .filter_by(
+                id=selected_list_id
+            )
+            .first()
+        )
+
+        if selected_list is None:
+
+            flash(
+                "Please select a valid candidate list.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.add_candidate",
+                    list_id=list_id
+                )
+            )
+
+        ####################################################
+        # Get seat rule from master database
+        ####################################################
+
+        seat_rule = (
+            master_session.query(
+                SubdistrictSectSeat
+            )
+            .filter_by(
+                subdistrict_id=selected_list.subdistrict_id,
+                sect_id=sect_id
+            )
+            .first()
+        )
+
+        if seat_rule is None:
+
+            flash(
+                "This sect is not available for the selected subdistrict.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.add_candidate",
+                    list_id=list_id
+                )
+            )
+
+        ####################################################
+        # Count existing candidates in this list/sect
+        ####################################################
+
+        current_candidates = (
+            tenant_session.query(
+                Candidate
+            )
+            .filter_by(
+                candidate_list_id=selected_list.id,
+                sect_id=sect_id
+            )
+            .count()
+        )
+
+        ####################################################
+        # Check seat limit
+        ####################################################
+
+        if current_candidates >= seat_rule.seats:
+
+            flash(
+                f"This list already contains the maximum number of candidates "
+                f"({seat_rule.seats}) for the selected sect.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.add_candidate",
+                    list_id=list_id
+                )
+            )
+
+        ####################################################
+        # Create candidate
+        ####################################################
+
+        candidate = Candidate(
+            name=name,
+            candidate_list_id=selected_list.id,
+            district_id=selected_list.district_id,
+            subdistrict_id=selected_list.subdistrict_id,
+            sect_id=sect_id
+        )
+
+        tenant_session.add(candidate)
+
+        tenant_session.commit()
+
+        ####################################################
+        # Success
+        ####################################################
 
         flash(
-            "Candidate name is required",
-            "danger"
+            "Candidate added successfully.",
+            "success"
         )
 
         return redirect(
@@ -732,38 +1409,24 @@ def add_candidate(list_id):
             )
         )
 
+    except Exception as e:
 
+        tenant_session.rollback()
 
-    ####################################################
-    # Create candidate
-    ####################################################
-
-    candidate = Candidate(
-        name=name,
-        list_id=candidate_list.id
-    )
-
-
-    db.session.add(candidate)
-
-    db.session.commit()
-
-
-
-    flash(
-        "Candidate added successfully",
-        "success"
-    )
-
-
-    return redirect(
-        url_for(
-            "tenant.manage_lists"
+        print(
+            "DATABASE ERROR:",
+            repr(e)
         )
-    )
+
+        raise
+
+    finally:
+
+        tenant_session.close()
+
 @tenant_bp.route(
     "/candidate/edit/<int:candidate_id>",
-    methods=["POST"]
+    methods=["GET", "POST"]
 )
 def edit_candidate(candidate_id):
 
@@ -850,7 +1513,6 @@ def edit_candidate(candidate_id):
 )
 def delete_candidate(candidate_id):
 
-
     ####################################################
     # Tenant authentication
     ####################################################
@@ -859,141 +1521,182 @@ def delete_candidate(candidate_id):
         abort(403)
 
 
-    tenant_id = session.get(
-        "tenant_id"
-    )
+    tenant = get_current_tenant()
 
-
-
-    ####################################################
-    # Validate ownership
-    ####################################################
-
-    candidate = (
-        Candidate.query
-        .join(CandidateList)
-        .filter(
-            Candidate.id == candidate_id,
-            CandidateList.tenant_id == tenant_id
+    if tenant is None:
+        return redirect(
+            url_for("tenant.login")
         )
-        .first()
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
     )
 
 
-    if not candidate:
-        abort(403)
+    try:
 
+        ####################################################
+        # Find candidate in tenant database
+        ####################################################
 
-
-    ####################################################
-    # Delete
-    ####################################################
-
-    db.session.delete(candidate)
-
-    db.session.commit()
-
-
-
-    flash(
-        "Candidate deleted successfully",
-        "success"
-    )
-
-
-    return redirect(
-        url_for(
-            "tenant.manage_lists"
+        candidate = (
+            tenant_session.query(
+                Candidate
+            )
+            .filter_by(
+                id=candidate_id
+            )
+            .first()
         )
-    )
+
+
+        if candidate is None:
+            abort(404)
+
+
+        ####################################################
+        # Delete candidate
+        ####################################################
+
+        tenant_session.delete(candidate)
+
+        tenant_session.commit()
+
+
+        flash(
+            "Candidate deleted successfully.",
+            "success"
+        )
+
+
+        return redirect(
+            url_for(
+                "tenant.manage_lists"
+            )
+        )
+
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "DELETE CANDIDATE ERROR:",
+            repr(e)
+        )
+
+        raise
+
+
+    finally:
+
+        tenant_session.close()
 @tenant_bp.route(
     "/candidate/move/<int:candidate_id>",
     methods=["POST"]
 )
 def move_candidate(candidate_id):
 
-
     ####################################################
-    # Tenant authentication
-    ####################################################
-
-    if session.get("role") != "tenant":
-        abort(403)
-
-
-    tenant_id = session.get(
-        "tenant_id"
-    )
-
-
-
-    ####################################################
-    # Find candidate owned by tenant
+    # Get current tenant
     ####################################################
 
-    candidate = (
-        Candidate.query
-        .join(CandidateList)
-        .filter(
-            Candidate.id == candidate_id,
-            CandidateList.tenant_id == tenant_id
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        return redirect(
+            url_for("tenant.login")
         )
-        .first()
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
     )
 
 
-    if not candidate:
-        abort(403)
+    try:
 
+        ####################################################
+        # Find candidate
+        ####################################################
 
-
-    ####################################################
-    # Destination list
-    ####################################################
-
-    new_list_id = request.form.get(
-        "list_id"
-    )
-
-
-    if not new_list_id:
-        abort(400)
-
-
-
-    destination_list = CandidateList.query.filter_by(
-        id=int(new_list_id),
-        tenant_id=tenant_id
-    ).first()
-
-
-    if not destination_list:
-        abort(403)
-
-
-
-    ####################################################
-    # Move candidate
-    ####################################################
-
-    candidate.list_id = destination_list.id
-
-
-    db.session.commit()
-
-
-
-    flash(
-        "Candidate moved successfully",
-        "success"
-    )
-
-
-    return redirect(
-        url_for(
-            "tenant.manage_lists"
+        candidate = (
+            tenant_session.query(Candidate)
+            .filter(
+                Candidate.id == candidate_id
+            )
+            .first()
         )
-    )
+
+
+        if not candidate:
+            abort(404)
+
+
+        ####################################################
+        # Destination list
+        ####################################################
+
+        new_list_id = request.form.get(
+            "list_id",
+            type=int
+        )
+
+
+        if not new_list_id:
+            abort(400)
+
+
+        ####################################################
+        # Find destination list
+        ####################################################
+
+        destination_list = (
+            tenant_session.query(CandidateList)
+            .filter_by(
+                id=new_list_id
+            )
+            .first()
+        )
+
+
+        if not destination_list:
+            abort(404)
+
+
+        ####################################################
+        # Move candidate
+        ####################################################
+
+        candidate.candidate_list_id = (
+            destination_list.id
+        )
+
+
+        ####################################################
+        # Save
+        ####################################################
+
+        tenant_session.commit()
+
+
+        flash(
+            "Candidate moved successfully.",
+            "success"
+        )
+
+
+        return redirect(
+            url_for(
+                "tenant.manage_lists"
+            )
+        )
+
+
+    finally:
+
+        tenant_session.close()
 @tenant_bp.route("/results")
 def tenant_results():
 
@@ -1235,3 +1938,824 @@ def download_all_results():
     )
 
     return response
+@tenant_bp.route(
+    "/ballot-pens/<int:ballot_pen_id>/credentials/edit",
+    methods=["GET", "POST"]
+)
+def edit_ballot_pen_credentials(ballot_pen_id):
+
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        return redirect(url_for("tenant.login"))
+
+
+    ballot_pen = BallotPen.query.get_or_404(
+        ballot_pen_id
+    )
+
+
+    if ballot_pen.district not in tenant.districts:
+        abort(403)
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    account = (
+        tenant_session.query(BallotPenAccount)
+        .filter_by(
+            ballot_pen_id=ballot_pen.id
+        )
+        .first()
+    )
+
+
+    if account is None:
+        abort(404)
+
+
+    if request.method == "POST":
+
+        account.username = request.form["username"]
+
+
+        new_password = request.form.get(
+            "password"
+        )
+
+
+        if new_password:
+            account.password = generate_password_hash(
+                new_password
+            )
+
+
+        tenant_session.commit()
+
+
+        flash(
+            "Ballot pen credentials updated",
+            "success"
+        )
+
+
+        return redirect(
+            url_for("tenant.ballot_pens")
+        )
+
+
+    return render_template(
+        "tenant/edit_ballot_pen_credentials.html",
+        account=account,
+        ballot_pen=ballot_pen
+    )
+@tenant_bp.route(
+    "/ballot-pens/<int:ballot_pen_id>/credentials/delete",
+    methods=["POST"]
+)
+def delete_ballot_pen_credentials(ballot_pen_id):
+
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        return redirect(url_for("tenant.login"))
+
+
+    ballot_pen = BallotPen.query.get_or_404(
+        ballot_pen_id
+    )
+
+
+    if ballot_pen.district not in tenant.districts:
+        abort(403)
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    account = (
+        tenant_session.query(BallotPenAccount)
+        .filter_by(
+            ballot_pen_id=ballot_pen.id
+        )
+        .first()
+    )
+
+
+    if account:
+
+        tenant_session.delete(account)
+
+        tenant_session.commit()
+
+
+    flash(
+        "Ballot pen credentials deleted",
+        "success"
+    )
+
+
+    return redirect(
+        url_for("tenant.ballot_pens")
+    )
+@tenant_bp.route(
+    "/candidate-sects/<int:list_id>"
+)
+def candidate_sects(list_id):
+
+    tenant = get_current_tenant()
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    candidate_list = (
+        tenant_session.query(
+            CandidateList
+        )
+        .filter_by(
+            id=list_id
+        )
+        .first()
+    )
+
+
+    sects = (
+        db.session.query(Sect)
+        .join(SubdistrictSectSeat)
+        .filter(
+            SubdistrictSectSeat.subdistrict_id ==
+            candidate_list.subdistrict_id
+        )
+        .all()
+    )
+
+
+    return jsonify([
+        {
+            "id":s.id,
+            "name":s.name
+        }
+        for s in sects
+    ])
+# ==========================================================
+# ADD CANDIDATE FROM MANAGE LISTS MODAL
+# ==========================================================
+
+@tenant_bp.route(
+    "/candidate/add-ajax",
+    methods=["POST"]
+)
+def add_candidate_ajax():
+
+    if session.get("role") != "tenant":
+        abort(403)
+
+
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        abort(403)
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    try:
+
+        # -----------------------------
+        # Read form data
+        # -----------------------------
+
+        list_id = request.form.get(
+            "list_id",
+            type=int
+        )
+
+        subdistrict_id = request.form.get(
+    "subdistrict_id",
+    type=int
+)
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+
+        sect_id = request.form.get(
+            "sect_id",
+            type=int
+        )
+
+
+
+        # -----------------------------
+        # Validate list
+        # -----------------------------
+
+        candidate_list = (
+            tenant_session.query(
+                CandidateList
+            )
+            .filter_by(
+                id=list_id
+            )
+            .first()
+        )
+
+
+        if candidate_list is None:
+            abort(404)
+
+
+
+        # -----------------------------
+        # Validate input
+        # -----------------------------
+
+        if not name or not sect_id:
+
+            flash(
+                "اسم المرشح والطائفة مطلوبان",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        # -----------------------------
+        # Validate sect seat
+        # -----------------------------
+
+        seat_rule = (
+            db.session.query(
+                SubdistrictSectSeat
+            )
+            .filter_by(
+                subdistrict_id=
+                    subdistrict_id,
+                sect_id=sect_id
+            )
+            .first()
+        )
+
+
+        if seat_rule is None:
+
+            flash(
+                "هذه الطائفة غير متاحة لهذا القضاء",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        # -----------------------------
+        # Check seat limit
+        # -----------------------------
+
+        count = (
+            tenant_session.query(
+                Candidate
+            )
+            .filter_by(
+                candidate_list_id=list_id,
+                sect_id=sect_id
+            )
+            .count()
+        )
+
+
+        if count >= seat_rule.seats:
+
+            flash(
+                "تم الوصول إلى العدد الأقصى للمقاعد لهذه الطائفة",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        # -----------------------------
+        # Create candidate
+        # -----------------------------
+
+        candidate = Candidate(
+
+            name=name,
+
+            candidate_list_id=list_id,
+
+            district_id=
+                candidate_list.district_id,
+
+            subdistrict_id=
+                subdistrict_id,
+
+            sect_id=sect_id
+        )
+
+
+        tenant_session.add(candidate)
+
+        tenant_session.commit()
+
+
+
+        flash(
+            "تمت إضافة المرشح بنجاح",
+            "success"
+        )
+
+
+        return redirect(
+            url_for(
+                "tenant.manage_lists"
+            )
+        )
+
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "ADD CANDIDATE ERROR:",
+            repr(e)
+        )
+
+        raise
+
+
+    finally:
+
+        tenant_session.close()
+@tenant_bp.route(
+    "/candidate-subdistricts/<int:list_id>"
+)
+def candidate_subdistricts(list_id):
+
+    tenant = get_current_tenant()
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    candidate_list = (
+        tenant_session.query(
+            CandidateList
+        )
+        .filter_by(
+            id=list_id
+        )
+        .first()
+    )
+
+
+    if candidate_list is None:
+        return jsonify([])
+
+
+    subdistricts = (
+        tenant_session.query(
+            SubDistrict
+        )
+        .filter_by(
+            district_id=candidate_list.district_id
+        )
+        .order_by(
+            SubDistrict.name
+        )
+        .all()
+    )
+
+
+    return jsonify([
+        {
+            "id": s.id,
+            "name": s.name
+        }
+        for s in subdistricts
+    ])
+@tenant_bp.route(
+    "/list-subdistricts/<int:list_id>"
+)
+def list_subdistricts(list_id):
+
+    tenant = get_current_tenant()
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    candidate_list = (
+        tenant_session.query(CandidateList)
+        .filter_by(id=list_id)
+        .first()
+    )
+
+
+    if candidate_list is None:
+        return jsonify([])
+
+
+    subdistricts = (
+        db.session.query(SubDistrict)
+        .filter_by(
+            district_id=candidate_list.district_id
+        )
+        .order_by(
+            SubDistrict.name
+        )
+        .all()
+    )
+
+
+    return jsonify([
+        {
+            "id": s.id,
+            "name": s.name
+        }
+        for s in subdistricts
+    ])
+@tenant_bp.route(
+    "/subdistrict-sects/<int:subdistrict_id>"
+)
+def subdistrict_sects(subdistrict_id):
+
+    sects = (
+        db.session.query(Sect)
+        .join(
+            SubdistrictSectSeat,
+            Sect.id == SubdistrictSectSeat.sect_id
+        )
+        .filter(
+            SubdistrictSectSeat.subdistrict_id == subdistrict_id
+        )
+        .all()
+    )
+
+
+    return jsonify([
+        {
+            "id": s.id,
+            "name": s.name
+        }
+        for s in sects
+    ])
+@tenant_bp.route(
+    "/update-list",
+    methods=["POST"]
+)
+def update_list():
+
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        abort(403)
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    try:
+
+        list_id = request.form.get(
+            "list_id",
+            type=int
+        )
+
+
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+
+        district_id = request.form.get(
+            "district_id",
+            type=int
+        )
+
+
+        candidate_list = (
+            tenant_session.query(
+                CandidateList
+            )
+            .filter_by(
+                id=list_id
+            )
+            .first()
+        )
+
+
+        if candidate_list is None:
+            abort(404)
+
+
+
+        if not name:
+
+            flash(
+                "اسم القائمة لا يمكن أن يكون فارغاً",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        # If changing district is allowed
+        if district_id:
+
+            if not tenant_has_district(
+                tenant,
+                district_id
+            ):
+
+                flash(
+                    "لا يمكنك نقل القائمة إلى هذه الدائرة",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for(
+                        "tenant.manage_lists"
+                    )
+                )
+
+
+            candidate_list.district_id = district_id
+
+
+
+        candidate_list.name = name
+
+
+        tenant_session.commit()
+
+
+        flash(
+            "تم تعديل القائمة بنجاح",
+            "success"
+        )
+
+
+        return redirect(
+            url_for(
+                "tenant.manage_lists"
+            )
+        )
+
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "UPDATE LIST ERROR:",
+            repr(e)
+        )
+
+        raise
+
+
+    finally:
+
+        tenant_session.close()
+@tenant_bp.route(
+    "/update-candidate",
+    methods=["POST"]
+)
+def update_candidate():
+
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        abort(403)
+
+
+    tenant_session = get_tenant_session(
+        tenant.db_name
+    )
+
+
+    try:
+
+        candidate_id = request.form.get(
+            "candidate_id",
+            type=int
+        )
+
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+
+        list_id = request.form.get(
+            "list_id",
+            type=int
+        )
+
+
+        subdistrict_id = request.form.get(
+            "subdistrict_id",
+            type=int
+        )
+
+
+        sect_id = request.form.get(
+            "sect_id",
+            type=int
+        )
+
+
+
+        candidate = (
+            tenant_session.query(
+                Candidate
+            )
+            .filter_by(
+                id=candidate_id
+            )
+            .first()
+        )
+
+
+        if candidate is None:
+            abort(404)
+
+
+
+        if not name or not list_id or not sect_id:
+
+            flash(
+                "اسم المرشح والقائمة والطائفة مطلوبة",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        candidate_list = (
+            tenant_session.query(
+                CandidateList
+            )
+            .filter_by(
+                id=list_id
+            )
+            .first()
+        )
+
+
+        if candidate_list is None:
+            abort(404)
+
+
+
+        # Validate sect availability
+
+        seat_rule = (
+            db.session.query(
+                SubdistrictSectSeat
+            )
+            .filter_by(
+                subdistrict_id=subdistrict_id,
+                sect_id=sect_id
+            )
+            .first()
+        )
+
+
+        if seat_rule is None:
+
+            flash(
+                "هذه الطائفة غير متاحة لهذا القضاء",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        # Check seat limit excluding this candidate
+
+        count = (
+            tenant_session.query(
+                Candidate
+            )
+            .filter(
+                Candidate.candidate_list_id == list_id,
+                Candidate.sect_id == sect_id,
+                Candidate.id != candidate_id
+            )
+            .count()
+        )
+
+
+        if count >= seat_rule.seats:
+
+            flash(
+                "لا يمكن تعديل المرشح: تم تجاوز عدد المقاعد المخصصة لهذه الطائفة",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
+
+
+
+        # Update candidate
+
+        candidate.name = name
+
+        candidate.candidate_list_id = list_id
+
+        candidate.district_id = (
+            candidate_list.district_id
+        )
+
+        candidate.subdistrict_id = (
+            subdistrict_id
+        )
+
+        candidate.sect_id = (
+            sect_id
+        )
+
+
+        tenant_session.commit()
+
+
+        flash(
+            "تم تعديل المرشح بنجاح",
+            "success"
+        )
+
+
+        return redirect(
+            url_for(
+                "tenant.manage_lists"
+            )
+        )
+
+
+    except Exception as e:
+
+        tenant_session.rollback()
+
+        print(
+            "UPDATE CANDIDATE ERROR:",
+            repr(e)
+        )
+
+        raise
+
+
+    finally:
+
+        tenant_session.close()

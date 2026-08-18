@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>أقلام الاقتراع</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+.page-header{
+    background:#0F5C6E;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.page-header h1{
+    margin:0;
+    font-size:40px;
+}
+
+.page-container{
+    max-width:1500px;
+    margin:35px auto;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+    padding:30px;
+}
+
+.top-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.table-wrapper{
+    overflow:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#0F5C6E;
+    color:white;
+    padding:10px;
+    white-space:nowrap;
+}
+
+td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    white-space:nowrap;
+}
+
+tr:nth-child(even){
+    background:#f9f9f9;
+}
+
+.generate-btn{
+    background:#198754;
+    color:white;
+    border:none;
+    border-radius:6px;
+    padding:8px 15px;
+    cursor:pointer;
+}
+
+.generate-btn:hover{
+    background:#157347;
+}
+
+.flash-message{
+    background:#dff0d8;
+    color:#3c763d;
+    padding:12px;
+    border-radius:6px;
+    margin-bottom:20px;
+}
+.edit-btn{
+
+    background:#0d6efd;
+    color:white;
+    padding:8px 12px;
+    border-radius:6px;
+    text-decoration:none;
+
+}
+
+
+.delete-btn{
+
+    background:#dc3545;
+    color:white;
+    border:none;
+    padding:8px 12px;
+    border-radius:6px;
+    cursor:pointer;
+
+}
+
+
+.edit-btn:hover{
+
+    background:#0b5ed7;
+
+}
+
+
+.delete-btn:hover{
+
+    background:#bb2d3b;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="page-header">
+
+<h1>
+أقلام الاقتراع
+</h1>
+
+</div>
+
+<div class="page-container">
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category,message in messages %}
+
+<div class="flash-message">
+{{ message }}
+</div>
+
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="top-actions">
+
+<a href="{{ url_for('tenant.manage_ballot_pen_credentials') }}"
+   class="logout-button">
+
+رجوع
+
+</a>
+
+</div>
+
+<div class="table-wrapper">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>الدائرة</th>
+
+<th>القضاء</th>
+
+<th>البلدة</th>
+
+<th>مركز الاقتراع</th>
+
+<th>الغرفة</th>
+
+<th>رقم القلم</th>
+
+<th>الجنس</th>
+
+<th>الإجراءات</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for pen in ballot_pens %}
+
+<tr>
+
+<td>
+{{ pen.district.name if pen.district else "" }}
+</td>
+
+<td>
+{{ pen.subdistrict.name if pen.subdistrict else "" }}
+</td>
+
+<td>
+{{ pen.village }}
+</td>
+
+<td>
+{{ pen.polling_center.name if pen.polling_center else "" }}
+</td>
+
+<td>
+{{ pen.room.name if pen.room else "" }}
+</td>
+
+<td>
+{{ pen.serial_number }}
+</td>
+
+<td>
+{{ pen.gender_type }}
+</td>
+
+<td>
+
+{% if pen.account %}
+
+<strong>
+{{ pen.account.username }}
+</strong>
+
+
+<br><br>
+
+
+<a href="{{ url_for(
+    'tenant.edit_ballot_pen_credentials',
+    ballot_pen_id=pen.id
+) }}"
+class="edit-btn">
+
+تعديل
+
+</a>
+
+
+<form method="POST"
+action="{{ url_for(
+    'tenant.delete_ballot_pen_credentials',
+    ballot_pen_id=pen.id
+) }}"
+style="display:inline;">
+
+<button
+type="submit"
+class="delete-btn"
+onclick="return confirm('هل تريد حذف بيانات الدخول؟');">
+
+حذف
+
+</button>
+
+</form>
+
+
+{% else %}
+
+
+<form method="POST"
+action="{{ url_for(
+    'tenant.generate_ballot_pen_credentials',
+    ballot_pen_id=pen.id
+) }}">
+
+<button
+type="submit"
+class="generate-btn">
+
+إنشاء بيانات الدخول
+
+</button>
+
+</form>
+
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% else %}
+
+<tr>
+
+<td colspan="8"
+    style="text-align:center">
+
+لا توجد أقلام اقتراع.
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</body>
+
+</html>

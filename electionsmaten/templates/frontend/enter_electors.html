@@ -1,17 +1,364 @@
 {% extends "shared/base.html" %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-<div class="form-container">
-    <h2>Enter Elector ID</h2>
-    <form method="POST" class="elector-form" action="{{ url_for('frontend_bp.submit_elector') }}">
-        <input type="text" name="elector_id" placeholder="Enter Elector ID" required>
+<style>
+
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+
+/* ================= HEADER ================= */
+
+.arabic-header{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    text-align:center;
+
+    padding:20px;
+
+    font-size:38px;
+
+    font-weight:bold;
+
+}
+
+
+/* ================= MAIN CONTAINER ================= */
+
+.dashboard-container{
+
+    width:95%;
+
+    max-width:900px;
+
+    margin:35px auto;
+
+    background:white;
+
+    border-radius:12px;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+
+    padding:30px;
+
+    text-align:center;
+
+}
+
+
+/* ================= TITLE ================= */
+
+.dashboard-container h2{
+
+    color:#0F5C6E;
+
+    font-size:30px;
+
+    margin:35px 0;
+
+}
+
+
+/* ================= FLASH MESSAGES ================= */
+
+.alert{
+
+    width:80%;
+
+    margin:20px auto;
+
+    padding:15px;
+
+    border-radius:8px;
+
+    font-size:20px;
+
+    font-weight:bold;
+
+}
+
+
+.alert-danger{
+
+    background:#f8d7da;
+
+    color:#721c24;
+
+    border:1px solid #f5c6cb;
+
+}
+
+
+.alert-success{
+
+    background:#d4edda;
+
+    color:#155724;
+
+    border:1px solid #c3e6cb;
+
+}
+
+
+.alert-warning{
+
+    background:#fff3cd;
+
+    color:#856404;
+
+    border:1px solid #ffeeba;
+
+}
+
+
+/* ================= FORM ================= */
+
+.elector-form input{
+
+    width:80%;
+
+    max-width:500px;
+
+    padding:15px;
+
+    font-size:22px;
+
+    border:2px solid #0F5C6E;
+
+    border-radius:8px;
+
+    text-align:center;
+
+    outline:none;
+
+}
+
+
+.elector-form input:focus{
+
+    border-color:#09424f;
+
+}
+
+
+/* ================= BUTTONS ================= */
+
+.form-buttons{
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:20px;
+
+    margin-top:30px;
+
+}
+
+
+.btn{
+
+    padding:14px 35px;
+
+    border:none;
+
+    border-radius:8px;
+
+    font-size:18px;
+
+    cursor:pointer;
+
+    text-decoration:none;
+
+    display:inline-block;
+
+}
+
+
+.btn-submit{
+
+    background:#0F5C6E;
+
+    color:white;
+
+}
+
+
+.btn-submit:hover{
+
+    background:#09424f;
+
+}
+
+
+.btn-cancel{
+
+    background:#c0392b;
+
+    color:white;
+
+}
+
+
+.btn-cancel:hover{
+
+    background:#922b21;
+
+}
+
+
+/* ================= BACK BUTTON ================= */
+
+.btn-back{
+
+    margin-top:35px;
+
+    background:#555;
+
+    color:white;
+
+}
+
+
+.btn-back:hover{
+
+    background:#333;
+
+}
+
+</style>
+
+
+<div class="dashboard-container">
+
+
+    <!-- HEADER -->
+
+    <div class="arabic-header">
+
+        الانتخابات النيابية 2028
+
+        <br>
+
+        {{ district_name }}
+
+        <br>
+
+        قلم رقم {{ ballot_number }}
+
+    </div>
+
+
+
+    <!-- FLASH MESSAGES -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="alert alert-{{ category }}">
+
+                    {{ message }}
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
+
+
+
+
+    <h2>
+
+        إدخال هوية الناخب
+
+    </h2>
+
+
+
+
+    <form method="POST"
+
+          class="elector-form"
+
+          action="{{ url_for('frontend_bp.submit_elector') }}">
+
+
+        <input
+
+            type="text"
+
+            name="elector_id"
+
+            placeholder="أدخل رقم هوية الناخب"
+
+            required
+
+            autofocus
+
+        >
+
+
+
         <div class="form-buttons">
-            <button type="submit" class="btn btn-submit">Add</button>
-            <button type="button" class="btn btn-cancel" onclick="document.querySelector('[name=elector_id]').value=''">Cancel</button>
+
+
+            <button
+
+                type="submit"
+
+                class="btn btn-submit">
+
+                تسجيل
+
+            </button>
+
+
+
+            <button
+
+                type="button"
+
+                class="btn btn-cancel"
+
+                onclick="document.querySelector('[name=elector_id]').value=''">
+
+                إلغاء
+
+            </button>
+
+
         </div>
+
+
     </form>
-    <a href="{{ url_for('frontend_bp.dashboard') }}" class="btn btn-back">← Back to Dashboard</a>
+
+
+
+    <a href="{{ url_for('frontend_bp.dashboard') }}"
+
+       class="btn btn-back">
+
+        العودة إلى لوحة التحكم
+
+    </a>
+
+
+
 </div>
+
+
 {% endblock %}

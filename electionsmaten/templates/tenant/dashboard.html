@@ -1,84 +1,292 @@
 <!DOCTYPE html>
+<html lang="ar" dir="rtl">
 
-<html lang="en">
 <head>
+
 <meta charset="UTF-8">
-<title>Tenant Dashboard</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<title>لوحة تحكم الزبون</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+/* ================= HEADER ================= */
+
+.page-header{
+    background:#0F5C6E;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.page-header h1{
+    margin:0;
+    font-size:42px;
+}
+
+/* ================= MAIN CARD ================= */
+
+.page-container{
+
+    width:95%;
+    max-width:1700px;
+
+    margin:35px auto;
+
+    background:white;
+
+    border-radius:12px;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+
+    padding:30px;
+
+}
+
+/* ================= TOP BAR ================= */
+
+.top-actions{
+
+    display:flex;
+
+    justify-content:flex-start;
+
+    margin-bottom:30px;
+
+}
+
+/* ================= DASHBOARD GRID ================= */
+
+.dashboard-grid{
+
+    display:grid;
+
+    grid-template-columns:
+    repeat(auto-fit,minmax(260px,1fr));
+
+    gap:25px;
+
+}
+
+/* ================= DASHBOARD CARD ================= */
+
+.dashboard-card{
+
+    background:white;
+
+    border:2px solid #0F5C6E;
+
+    border-radius:12px;
+
+    padding:30px;
+
+    text-align:center;
+
+    text-decoration:none;
+
+    color:#333;
+
+    transition:.25s;
+
+    box-shadow:0 3px 10px rgba(0,0,0,.08);
+
+}
+
+.dashboard-card:hover{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    transform:translateY(-4px);
+
+}
+
+.dashboard-card h2{
+
+    margin-top:0;
+
+    margin-bottom:15px;
+
+    font-size:24px;
+
+}
+
+.dashboard-card p{
+
+    margin:0;
+
+    font-size:16px;
+
+    line-height:1.7;
+
+}
+
+/* ================= FLASH ================= */
+
+.flash-message{
+
+    background:#dff0d8;
+
+    color:#3c763d;
+
+    padding:12px;
+
+    border-radius:6px;
+
+    margin-bottom:20px;
+
+}
+
+</style>
+
 </head>
 
-<body class="bg-gray-100 min-h-screen p-6">
+<body>
 
-<header class="flex justify-between items-center mb-6">
-<h1 class="text-3xl font-bold">Tenant Dashboard</h1>
+<div class="page-header">
 
-<a href="{{ url_for('auth.logout') }}" class="logout-button">
-Logout
+<h1>
+
+لوحة تحكم الزبون
+
+</h1>
+
+</div>
+
+<div class="page-container">
+
+<div class="top-actions">
+
+<a href="{{ url_for('auth.logout') }}"
+   class="logout-button">
+
+تسجيل الخروج
+
 </a>
-</header>
+
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category,message in messages %}
+
+<div class="flash-message">
+
+{{ message }}
+
+</div>
+
+{% endfor %}
+{% endif %}
+{% endwith %}
 
 <div class="dashboard-grid">
 
-<a href="{{ url_for('tenant.view_districts') }}" class="dashboard-card">
-<h2>View My Districts</h2>
-<p>See the districts your party participates in</p>
-</a>
+{% if district_count > 1 %}
 
-<a href="{{ url_for('tenant.create_list') }}" class="dashboard-card">
-<h2>Create Candidate List</h2>
-<p>Create a new election list for one of your districts</p>
-</a>
-
-{#<a href="{{ url_for('tenant.view_lists') }}" class="dashboard-card">
-<h2>Manage Candidate Lists</h2>
-<p>View, edit, or delete your lists</p>
-</a>
-
-<a href="{{ url_for('tenant.create_candidate') }}" class="dashboard-card">
-<h2>Create Candidate</h2>
-<p>Add a candidate to one of your lists</p>
-</a>
-
-<a href="{{ url_for('tenant.view_candidates') }}" class="dashboard-card">
-<h2>Manage Candidates</h2>
-<p>View, edit, or delete candidates</p>
-</a>
-
-<a href="{{ url_for('tenant.download_results') }}" class="dashboard-card">
-<h2>Export Results</h2>
-<p>Download voting results as a CSV file</p>
-</a>#}
-<a href="{{ url_for('tenant.manage_lists') }}" class="dashboard-card">
-<h2>Manage Lists & Candidates</h2>
-<p>Manage lists and their candidates in one place</p>
-<a href="{{ url_for('tenant.tenant_results') }}" class="dashboard-card">
-<h2>View Results</h2>
-<p>See voting results by district and download CSV reports</p>
-<a href="{{ url_for('tenant.view_electors') }}" class="dashboard-card">
-<h2>View Electors info</h2>
-<p>Check the elector info for this tenant in all the districts they are participating in</p>
-</a>
-<a href="{{ url_for('tenant.view_districts') }}" 
+<a href="{{ url_for('tenant.view_districts') }}"
    class="dashboard-card">
 
-<h2>District Credentials</h2>
+<h2>قائمة الدوائر</h2>
 
 <p>
-Create and manage district-level access credentials
+وصول إلى لائحة الدوائر الانتخابية
 </p>
 
 </a>
-<a href="{{ url_for('tenant.manage_ballot_pen_credentials') }}" 
+
+{% endif %}
+
+
+<a href="{{ url_for('tenant.create_list') }}"
    class="dashboard-card">
 
-<h2>Ballot Pen Credentials</h2>
+<h2>تعريف القوائم الانتخابية</h2>
 
 <p>
-Create and manage ballot pen users for your districts
+تعريف القوائم الانتخابية في الدوائر التي تشارك فيها
 </p>
 
 </a>
+
+
+<a href="{{ url_for('tenant.manage_lists') }}"
+   class="dashboard-card">
+
+<h2>إدارة اللوائح والمرشحين</h2>
+
+<p>
+إدارة القوائم الانتخابية والمرشحين
+</p>
+
+</a>
+
+
+<a href="{{ url_for('tenant.tenant_results') }}"
+   class="dashboard-card">
+
+<h2>متابعة النتائج</h2>
+
+<p>
+متابعة النتائج وتحميلها بصيغة CSV
+</p>
+
+</a>
+
+
+<a href="{{ url_for('tenant.view_electors') }}"
+   class="dashboard-card">
+
+<h2>لوائح الناخبين</h2>
+
+<p>
+عرض معلومات الناخبين في جميع الدوائر
+</p>
+
+</a>
+
+
+{% if district_count > 1 %}
+
+<a href="{{ url_for('tenant.view_districts') }}"
+   class="dashboard-card">
+
+<h2>مفاتيح الدوائر</h2>
+
+<p>
+إنشاء وإدارة مفاتيح خاصة بالدوائر
+</p>
+
+</a>
+
+{% endif %}
+
+
+<a href="{{ url_for('tenant.manage_ballot_pen_credentials') }}"
+   class="dashboard-card">
+
+<h2>مفاتيح  أقلام الاقتراع</h2>
+
+<p>
+تعريف وإدارة مفاتيح  أقلام الاقتراع
+</p>
+
+</a>
+
+</div>
+
 </div>
 
 </body>
+
 </html>

@@ -1,14 +1,19 @@
 # db/tenant_engine.py
 
+import os
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import scoped_session, sessionmaker
+
+INSTANCE_PATH = "instance"
 
 TENANT_ENGINES = {}
 TENANT_SESSIONS = {}
 
 
 def get_tenant_db_url(db_name):
-    return f"postgresql://postgres:password@localhost/{db_name}"
+    db_path = os.path.join(INSTANCE_PATH, f"{db_name}.db")
+    return f"sqlite:///{db_path}"
 
 
 def get_tenant_session(db_name):
@@ -21,9 +26,8 @@ def get_tenant_session(db_name):
         )
 
         session_factory = sessionmaker(bind=engine)
-        session = scoped_session(session_factory)
 
         TENANT_ENGINES[db_name] = engine
-        TENANT_SESSIONS[db_name] = session
+        TENANT_SESSIONS[db_name] = scoped_session(session_factory)
 
     return TENANT_SESSIONS[db_name]

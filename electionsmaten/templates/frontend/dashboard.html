@@ -2,39 +2,284 @@
 
 {% block content %}
 
+<style>
+
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+
+/* ================= HEADER ================= */
+
+.arabic-header{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    text-align:center;
+
+    padding:20px;
+
+    font-size:38px;
+
+    font-weight:bold;
+
+}
+
+
+/* ================= MAIN CONTAINER ================= */
+
+.dashboard-container{
+
+    width:95%;
+
+    max-width:1700px;
+
+    margin:35px auto;
+
+    background:white;
+
+    border-radius:12px;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+
+    padding:30px;
+
+}
+
+
+/* ================= TOP BAR ================= */
+
+.dashboard-header{
+
+    display:flex;
+
+    justify-content:flex-start;
+
+    margin-bottom:30px;
+
+}
+
+
+.logout-button{
+
+    background:#c0392b;
+
+    color:white;
+
+    padding:12px 25px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:18px;
+
+}
+
+
+.logout-button:hover{
+
+    background:#922b21;
+
+}
+
+
+/* ================= GRID ================= */
+
+.dashboard-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+
+    gap:25px;
+
+}
+
+
+/* ================= CARD ================= */
+
+.dashboard-card{
+
+    background:white;
+
+    border:2px solid #0F5C6E;
+
+    border-radius:12px;
+
+    padding:30px;
+
+    text-align:center;
+
+    text-decoration:none;
+
+    color:#333;
+
+    transition:.25s;
+
+    box-shadow:0 3px 10px rgba(0,0,0,.08);
+
+}
+
+
+.dashboard-card:hover{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    transform:translateY(-4px);
+
+}
+
+
+.dashboard-card h2{
+
+    margin-top:0;
+
+    margin-bottom:15px;
+
+    font-size:26px;
+
+}
+
+
+.dashboard-card p{
+
+    margin:0;
+
+    font-size:17px;
+
+    line-height:1.7;
+
+}
+
+</style>
+
+
 <div class="dashboard-container">
-     <div class="arabic-header">الانتخابات النيابية 2028 {{ district_name }} قلم {{ ballot_number }}
-    </div>
 
     <!-- HEADER -->
-    <div class="dashboard-header">
-        
 
-        <a href="{{ url_for('frontend_bp.logout') }}" class="logout-button">
-            Logout
-        </a>
+    <div class="arabic-header">
+
+        الانتخابات النيابية 2028
+
+        <br>
+
+        {{ district_name }}
+
+        <br>
+
+        قلم رقم {{ ballot_number }}
+
     </div>
 
+
+    <!-- TOP BAR -->
+
+    <div class="dashboard-header">
+
+        <a href="{{ url_for('auth.logout') }}"
+           class="logout-button">
+
+            تسجيل الخروج
+
+        </a>
+
+    </div>
+
+
     <!-- GRID -->
+
     <div class="dashboard-grid">
 
         <!-- Enter Electors -->
-        <a href="{{ url_for('frontend_bp.enter_electors') }}" class="dashboard-card">
-            <h2>Enter Electors</h2>
-            <p>Add elector IDs before voting</p>
+
+        <a href="{{ url_for('frontend_bp.enter_electors') }}"
+           class="dashboard-card">
+
+            <h2>
+
+                إدخال الناخبين
+
+            </h2>
+
+            <p>
+
+                إدخال رقم هوية الناخب والتحقق من أهليته قبل بدء عملية الاقتراع.
+
+            </p>
+
         </a>
 
-        <!-- View Electors -->
-        <a href="{{ url_for('frontend_bp.view_electors') }}" class="dashboard-card">
-            <h2>View Electors</h2>
-            <p>See submitted elector IDs</p>
+
+        <!-- Submitted Electors -->
+
+        <a href="{{ url_for('frontend_bp.view_electors') }}"
+           class="dashboard-card">
+
+            <h2>
+
+                الناخبون المقترعون
+
+            </h2>
+
+            <p>
+
+                عرض جميع الناخبين الذين تم تسجيل حضورهم مع وقت إدخال كل ناخب.
+
+            </p>
+
         </a>
+
+
+        <!-- Ballot Pen Electors -->
+
+        <a href="{{ url_for('frontend_bp.ballot_pen_electors') }}"
+           class="dashboard-card">
+
+            <h2>
+
+                لائحة ناخبي القلم
+
+            </h2>
+
+            <p>
+
+                عرض جميع الناخبين المخصصين لهذا القلم والذين يحق لهم الاقتراع فيه.
+
+            </p>
+
+        </a>
+
 
         <!-- Cast Vote -->
-        <a href="{{ url_for('frontend_bp.cast_vote') }}" class="dashboard-card">
-            <h2>Cast Vote</h2>
-            <p>Submit votes securely</p>
+
+        <a href="{{ url_for('frontend_bp.cast_vote') }}"
+           class="dashboard-card">
+
+            <h2>
+
+                تسجيل الاقتراع
+
+            </h2>
+
+            <p>
+
+                تسجيل اللائحة والمرشحين الذين اختارهم الناخب بعد التحقق من هويته.
+
+            </p>
+
         </a>
+
+
+        
 
     </div>
 

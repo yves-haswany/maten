@@ -1,119 +1,1577 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Manage Lists</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
+{% extends "shared/base.html" %}
 
-<body>
+{% block content %}
 
-<div class="table-container">
 
-<h2>Candidate Lists & Candidates</h2>
+<style>
 
-<a href="{{ url_for('tenant.create_list') }}" class="create-button">
-+ Create New List
-</a>
+/* ================= MAIN CONTAINER ================= */
 
-<br><br>
+.lists-container{
 
-{% for list in lists %}
+    width:95%;
 
-<div class="list-card">
+    max-width:1700px;
 
-<h3>
-{{ list.name }} ({{ list.district.name }})
-</h3>
+    margin:35px auto;
 
-<!-- LIST ACTIONS -->
-<div class="list-actions">
+    background:white;
 
-<a href="{{ url_for('tenant.edit_list', list_id=list.id) }}">
-Edit List
-</a>
+    border-radius:12px;
 
-|
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
 
-<a href="{{ url_for('tenant.delete_list', list_id=list.id) }}"
-onclick="return confirm('Delete this list and all candidates?')">
-Delete List
-</a>
+    padding:30px;
+
+}
+
+
+/* ================= HEADER ================= */
+
+.arabic-header{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    text-align:center;
+
+    padding:20px;
+
+    font-size:38px;
+
+    font-weight:bold;
+
+    border-radius:10px;
+
+    margin-bottom:30px;
+
+}
+
+
+/* ================= TOP ACTION ================= */
+
+.top-actions{
+
+    margin-bottom:25px;
+
+}
+
+
+.create-button{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:12px 25px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:18px;
+
+}
+
+
+.create-button:hover{
+
+    background:#09424f;
+
+}
+
+
+/* ================= LIST CARD ================= */
+
+.list-card{
+
+    border:2px solid #0F5C6E;
+
+    border-radius:12px;
+
+    padding:20px;
+
+    margin-bottom:25px;
+
+}
+
+
+/* ================= LIST HEADER ================= */
+
+.list-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:20px;
+
+}
+
+
+.list-title{
+
+    font-size:25px;
+
+    font-weight:bold;
+
+    color:#0F5C6E;
+
+}
+
+
+/* ================= ACTION BUTTONS ================= */
+
+.action-buttons{
+
+    display:flex;
+
+    gap:10px;
+
+    align-items:center;
+
+}
+
+
+.btn{
+
+    padding:8px 15px;
+
+    border-radius:7px;
+
+    text-decoration:none;
+
+    border:none;
+
+    cursor:pointer;
+
+    font-size:15px;
+
+}
+
+
+.btn-edit{
+
+    background:#2980b9;
+
+    color:white;
+
+}
+
+
+.btn-delete{
+
+    background:#c0392b;
+
+    color:white;
+
+}
+
+
+.btn-add{
+
+    background:#27ae60;
+
+    color:white;
+
+    display:inline-block;
+
+    margin-bottom:15px;
+
+}
+
+
+.btn:hover{
+
+    opacity:.85;
+
+}
+
+
+/* ================= TABLE ================= */
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+
+th{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:12px;
+
+}
+
+
+td{
+
+    padding:12px;
+
+    border-bottom:1px solid #ddd;
+
+    text-align:center;
+
+}
+
+
+/* ================= BACK ================= */
+
+.back-link{
+
+    display:inline-block;
+
+    margin-top:30px;
+
+    background:#555;
+
+    color:white;
+
+    padding:12px 25px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+}
+
+/* ================= MODAL ================= */
+
+
+.modal{
+
+    display:none;
+
+    position:fixed;
+
+    z-index:1000;
+
+    left:0;
+
+    top:0;
+
+    width:100%;
+
+    height:100%;
+
+    background:rgba(0,0,0,.5);
+
+}
+
+
+.modal-content{
+
+    background:white;
+
+    width:450px;
+
+    margin:120px auto;
+
+    padding:30px;
+
+    border-radius:12px;
+
+    text-align:center;
+
+}
+
+
+.modal-content h2{
+
+    color:#0F5C6E;
+
+}
+
+
+.modal-content input,
+.modal-content select{
+
+    width:90%;
+
+    padding:12px;
+
+    margin:10px;
+
+    font-size:16px;
+
+    border:1px solid #ccc;
+
+    border-radius:8px;
+
+}
+
+
+.modal-buttons{
+
+    margin-top:20px;
+
+}
+
+
+.btn-save{
+
+    background:#27ae60;
+
+    color:white;
+
+}
+
+
+.btn-close{
+
+    background:#c0392b;
+
+    color:white;
+
+}
+.flash-container{
+    width:90%;
+    margin:20px auto;
+}
+
+
+.flash-message{
+
+    padding:15px;
+
+    border-radius:8px;
+
+    margin-bottom:10px;
+
+    text-align:center;
+
+    font-size:18px;
+
+    font-weight:bold;
+
+}
+
+
+.flash-message.success{
+    background:#d4edda;
+    color:#155724;
+}
+
+
+.flash-message.danger{
+    background:#f8d7da;
+    color:#721c24;
+}
+
+
+.flash-message.warning{
+    background:#fff3cd;
+    color:#856404;
+}
+</style>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+
+        <div class="flash-container">
+
+            {% for category, message in messages %}
+
+                <div class="flash-message {{ category }}">
+                    {{ message }}
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% endif %}
+{% endwith %}
+
+<div class="lists-container">
+
+
+    <!-- HEADER -->
+
+    <div class="arabic-header">
+
+        ادارة اللوائح الانتخابية
+
+    </div>
+
+
+
+    <!-- CREATE LIST -->
+
+    <div class="top-actions">
+
+    <button 
+        type="button"
+        class="create-button"
+        onclick="openListModal()">
+
+        + زيادة قائمة مرشحين
+
+    </button>
 
 </div>
 
-<br>
-
-<!-- ✅ ADD CANDIDATE BUTTON (UPDATED) -->
-<a href="{{ url_for('tenant.add_candidate', list_id=list.id) }}" class="create-button">
-+ Add Candidate
-</a>
-
-<br><br>
-
-<!-- CANDIDATES TABLE -->
-<table>
-
-<tr>
-<th>Name</th>
-<th>Actions</th>
-</tr>
-
-{% for candidate in list.candidates %}
-
-<tr>
-
-<td>{{ candidate.name }}</td>
 
 
-<td>
 
-<a href="{{ url_for('tenant.edit_candidate', candidate_id=candidate.id) }}">
-Edit
-</a>
+    {% for list in lists %}
 
-|
 
-<a href="{{ url_for('tenant.delete_candidate', candidate_id=candidate.id) }}"
-onclick="return confirm('Delete candidate?')">
-Delete
-</a>
+    <div class="list-card">
 
-|
 
-<!-- MOVE CANDIDATE -->
-<form method="POST" action="{{ url_for('tenant.move_candidate', candidate_id=candidate.id) }}" style="display:inline;">
+        <!-- LIST HEADER -->
 
-{#<select name="new_list_id">
+        <div class="list-header">
 
-{% for l in lists %}
-<option value="{{ l.id }}">{{ l.name }}</option>
-{% endfor %} 
 
-</select>#}
+            <div class="list-title">
 
-<button type="submit">Move</button>
+                {{ list.name }}
+
+                ({{ district_map.get(list.district_id, 'Unknown') }})
+
+            </div>
+
+
+
+            <div class="action-buttons">
+
+
+                <button
+    type="button"
+    class="btn btn-edit"
+    onclick="openEditListModal(
+        '{{ list.id }}',
+        '{{ list.name }}',
+        '{{ list.district_id }}'
+    )">
+
+    تعديل القائمة
+
+</button>
+
+
+
+                <form method="POST"
+                      action="{{ url_for('tenant.delete_list', list_id=list.id) }}"
+                      style="display:inline;">
+
+
+                    <button type="submit"
+                            class="btn btn-delete"
+                            onclick="return confirm('هل أنت متأكد من حذف القائمة؟')">
+
+                        حذف
+
+                    </button>
+
+
+                </form>
+
+
+            </div>
+
+
+        </div>
+
+
+
+
+
+        <!-- ADD CANDIDATE -->
+
+     <button
+    type="button"
+    class="btn btn-add"
+    onclick="openCandidateModal('{{ list.id }}')">
+
+    + إضافة مرشح
+
+</button>
+
+
+
+
+
+        <!-- CANDIDATES TABLE -->
+
+        <table>
+
+
+            <tr>
+
+                <th>
+                    الاسم
+                </th>
+
+                <th>
+                    الإجراءات
+                </th>
+
+            </tr>
+
+
+
+            {% for candidate in list.candidates %}
+
+
+            <tr>
+
+
+                <td>
+
+                    {{ candidate.name }}
+
+                </td>
+
+
+
+                <td>
+
+
+                    <button
+    type="button"
+    class="btn btn-edit"
+    onclick="openEditCandidateModal(
+        '{{ candidate.id }}',
+        '{{ candidate.name }}',
+        '{{ candidate.candidate_list_id }}',
+        '{{ candidate.subdistrict_id }}',
+        '{{ candidate.sect_id }}'
+    )">
+
+    تعديل
+
+</button>   
+
+
+
+                    <form method="POST"
+                          action="{{ url_for('tenant.delete_candidate', candidate_id=candidate.id) }}"
+                          style="display:inline;">
+
+
+                        <button type="submit"
+                                class="btn btn-delete"
+                                onclick="return confirm('هل أنت متأكد من حذف المرشح؟')">
+
+                            إلغاء
+
+                        </button>
+
+
+                    </form>
+
+
+                    <form method="POST"
+                          action="{{ url_for('tenant.move_candidate', candidate_id=candidate.id) }}"
+                          style="display:inline;">
+
+
+                       <button
+    type="button"
+    class="btn btn-edit"
+    onclick="openMoveCandidateModal('{{ candidate.id }}')">
+
+    نقل
+
+</button>
+
+
+                    </form>
+
+
+
+                </td>
+
+
+            </tr>
+
+
+            {% endfor %}
+
+
+        </table>
+
+
+    </div>
+
+
+    {% endfor %}
+
+
+     <!-- ================= CREATE LIST MODAL ================= -->
+
+
+<div id="listModal" class="modal">
+
+
+    <div class="modal-content">
+
+
+        <h2>
+            إضافة قائمة جديدة
+        </h2>
+
+
+
+        <form method="POST"
+              action="{{ url_for('tenant.create_list') }}">
+
+
+
+            <input 
+                type="text"
+                name="name"
+                placeholder="اسم القائمة"
+                required>
+
+
+
+            <select name="district_id"
+                    id="districtSelect"
+                    required>
+
+
+                <option value="">
+                    اختر الدائرة
+                </option>
+
+
+                {% for district in districts %}
+
+                <option value="{{ district.id }}">
+
+                    {{ district.name }}
+
+                </option>
+
+                {% endfor %}
+
+
+            </select>
+
+
+
+
+
+            
+
+
+
+
+
+            <div class="modal-buttons">
+
+
+                <button 
+                    type="submit"
+                    class="btn btn-save">
+
+                    حفظ
+
+                </button>
+
+
+
+                <button 
+                    type="button"
+                    class="btn btn-close"
+                    onclick="closeListModal()">
+
+                    إلغاء
+
+                </button>
+
+
+            </div>
+
+
+        </form>
+
+
+    </div>
+
+
+</div>
+<div id="candidateModal" class="modal">
+
+<div class="modal-content">
+
+<h2>
+إضافة مرشح
+</h2>
+
+
+<form method="POST"
+      action="{{ url_for('tenant.add_candidate_ajax') }}">
+
+
+<input type="hidden"
+       name="list_id"
+       id="candidateListId">
+
+
+<input type="text"
+       name="name"
+       placeholder="اسم المرشح"
+       required>
+
+<select name="subdistrict_id"
+        id="candidateSubdistrictSelect"
+        required>
+
+    <option value="">
+        اختر القضاء
+    </option>
+
+</select>
+<select name="sect_id"
+        id="candidateSectSelect">
+
+</select>
+
+
+<button class="btn btn-save">
+حفظ
+</button>
+
+
+<button type="button"
+        class="btn btn-close"
+        onclick="closeCandidateModal()">
+
+إلغاء
+
+</button>
+
 
 </form>
 
-</td>
+</div>
+</div>
+<!-- ================= EDIT LIST MODAL ================= -->
 
-</tr>
+<div id="editListModal" class="modal">
+
+
+<div class="modal-content">
+
+
+<h2>
+تعديل القائمة
+</h2>
+
+
+<form method="POST"
+      action="{{ url_for('tenant.update_list') }}">
+
+
+<input type="hidden"
+       name="list_id"
+       id="editListId">
+
+
+<input type="text"
+       name="name"
+       id="editListName"
+       placeholder="اسم القائمة"
+       required>
+
+
+
+<select name="district_id"
+        id="editListDistrict"
+        required>
+
+
+{% for district in districts %}
+
+<option value="{{ district.id }}">
+
+{{ district.name }}
+
+</option>
 
 {% endfor %}
 
-</table>
+
+</select>
+
+
+
+<div class="modal-buttons">
+
+
+<button class="btn btn-save">
+
+حفظ
+
+</button>
+
+
+
+<button type="button"
+        class="btn btn-close"
+        onclick="closeEditListModal()">
+
+إلغاء
+
+</button>
+
 
 </div>
 
-<br><br>
+
+</form>
+
+
+</div>
+
+</div>
+<!-- ================= EDIT CANDIDATE MODAL ================= -->
+
+
+<div id="editCandidateModal" class="modal">
+
+
+<div class="modal-content">
+
+
+<h2>
+تعديل المرشح
+</h2>
+
+
+
+<form method="POST"
+      action="{{ url_for('tenant.update_candidate') }}">
+
+
+
+<input type="hidden"
+       name="candidate_id"
+       id="editCandidateId">
+
+
+
+<input type="text"
+       name="name"
+       id="editCandidateName"
+       placeholder="اسم المرشح"
+       required>
+
+
+
+<select name="candidate_list_id"
+        id="editCandidateList">
+
+
+{% for list in lists %}
+
+<option value="{{ list.id }}">
+
+{{ list.name }}
+
+</option>
 
 {% endfor %}
 
-<a href="{{ url_for('tenant.dashboard') }}" class="back-link">
-Back to Dashboard
-</a>
+
+</select>
+
+
+
+<select name="subdistrict_id"
+        id="editCandidateSubdistrict"
+        required>
+
+<option value="">
+اختر القضاء
+</option>
+
+</select>
+
+
+
+<select name="sect_id"
+        id="editCandidateSect"
+        required>
+
+<option value="">
+اختر الطائفة
+</option>
+
+</select>
+
+
+
+
+<div class="modal-buttons">
+
+
+<button class="btn btn-save">
+
+حفظ
+
+</button>
+
+
+<button type="button"
+        class="btn btn-close"
+        onclick="closeEditCandidateModal()">
+
+إلغاء
+
+</button>
+
 
 </div>
 
-</body>
-</html>
+
+</form>
+
+
+</div>
+
+</div>
+<!-- ================= MOVE CANDIDATE MODAL ================= -->
+
+<div id="moveCandidateModal" class="modal">
+
+    <div class="modal-content">
+
+        <h2>نقل المرشح</h2>
+
+        <form method="POST"
+              id="moveCandidateForm">
+
+            <select
+                name="list_id"
+                required>
+
+                <option value="">
+                    اختر اللائحة الجديدة
+                </option>
+
+                {% for list in lists %}
+
+                <option value="{{ list.id }}">
+                    {{ list.name }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+            <div class="modal-buttons">
+
+                <button
+                    type="submit"
+                    class="btn btn-save">
+
+                    نقل
+
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-close"
+                    onclick="closeMoveCandidateModal()">
+
+                    إلغاء
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+</div>
+    <a href="{{ url_for('tenant.dashboard') }}"
+       class="back-link">
+
+        العودة إلى لوحة التحكم
+
+    </a>
+
+
+
+</div>
+<script>
+
+
+// ==================================================
+// CREATE LIST MODAL
+// ==================================================
+
+// ==================================================
+// CREATE LIST MODAL
+// ==================================================
+
+function openListModal(){
+
+    document.getElementById(
+        "listModal"
+    ).style.display = "block";
+
+}
+
+
+function closeListModal(){
+
+    document.getElementById(
+        "listModal"
+    ).style.display = "none";
+
+}
+
+
+function closeListModal(){
+
+    document.getElementById(
+        "listModal"
+    ).style.display = "none";
+
+}
+
+
+
+// ==================================================
+// CLOSE MODALS WHEN CLICK OUTSIDE
+// ==================================================
+
+window.addEventListener("click", function(event){
+
+    [
+        "listModal",
+        "candidateModal",
+        "editListModal",
+        "editCandidateModal",
+        "moveCandidateModal"
+    ].forEach(function(id){
+
+        let modal = document.getElementById(id);
+
+        if(
+            modal &&
+            event.target === modal
+        ){
+            modal.style.display = "none";
+        }
+
+    });
+
+});
+
+
+
+// ==================================================
+// ADD CANDIDATE MODAL
+// ==================================================
+
+function openCandidateModal(listId){
+
+
+    // store selected list id
+
+    document.getElementById(
+        "candidateListId"
+    ).value = listId;
+
+
+
+    let subdistrictSelect =
+        document.getElementById(
+            "candidateSubdistrictSelect"
+        );
+
+
+    let sectSelect =
+        document.getElementById(
+            "candidateSectSelect"
+        );
+
+
+
+    subdistrictSelect.innerHTML =
+        '<option value="">جاري تحميل الأقضية...</option>';
+
+
+    sectSelect.innerHTML =
+        '<option value="">اختر الطائفة</option>';
+
+
+
+    /*
+        Get subdistricts belonging
+        to this list district
+    */
+
+
+    fetch(
+        "/tenant/list-subdistricts/" + listId
+    )
+
+
+    .then(
+        response => response.json()
+    )
+
+
+    .then(
+        data => {
+
+
+            subdistrictSelect.innerHTML =
+                '<option value="">اختر القضاء</option>';
+
+
+
+            data.forEach(
+                function(subdistrict){
+
+
+                    let option =
+                        document.createElement(
+                            "option"
+                        );
+
+
+                    option.value =
+                        subdistrict.id;
+
+
+                    option.textContent =
+                        subdistrict.name;
+
+
+
+                    subdistrictSelect.appendChild(
+                        option
+                    );
+
+
+                }
+            );
+
+
+        }
+    )
+
+
+    .catch(
+        error => {
+
+
+            console.error(
+                "SUBDISTRICT ERROR:",
+                error
+            );
+
+
+            subdistrictSelect.innerHTML =
+                '<option>خطأ في تحميل الأقضية</option>';
+
+
+        }
+    );
+
+
+
+    /*
+        Load sects when subdistrict changes
+    */
+
+
+    subdistrictSelect.onchange = function(){
+
+
+        let subdistrictId =
+            this.value;
+
+
+
+        sectSelect.innerHTML =
+            '<option value="">جاري تحميل الطوائف...</option>';
+
+
+
+        if(!subdistrictId){
+
+            sectSelect.innerHTML =
+                '<option value="">اختر الطائفة</option>';
+
+            return;
+
+        }
+
+
+
+        fetch(
+            "/tenant/subdistrict-sects/" + subdistrictId
+        )
+
+
+        .then(
+            response => response.json()
+        )
+
+
+        .then(
+            data => {
+
+
+                sectSelect.innerHTML =
+                    '<option value="">اختر الطائفة</option>';
+
+
+
+                data.forEach(
+                    function(sect){
+
+
+                        let option =
+                            document.createElement(
+                                "option"
+                            );
+
+
+                        option.value =
+                            sect.id;
+
+
+                        option.textContent =
+                            sect.name;
+
+
+
+                        sectSelect.appendChild(
+                            option
+                        );
+
+
+                    }
+                );
+
+
+            }
+        )
+
+
+        .catch(
+            error => {
+
+
+                console.error(
+                    "SECTS ERROR:",
+                    error
+                );
+
+
+                sectSelect.innerHTML =
+                    '<option>خطأ في تحميل الطوائف</option>';
+
+            }
+        );
+
+
+    };
+
+
+
+    document.getElementById(
+        "candidateModal"
+    ).style.display = "block";
+
+
+}
+
+
+
+
+function closeCandidateModal(){
+
+    document.getElementById(
+        "candidateModal"
+    ).style.display = "none";
+
+}
+// ==================================================
+// EDIT LIST MODAL
+// ==================================================
+
+
+function openEditListModal(
+    id,
+    name,
+    district
+){
+
+
+    document.getElementById(
+        "editListId"
+    ).value = id;
+
+
+    document.getElementById(
+        "editListName"
+    ).value = name;
+
+
+    document.getElementById(
+        "editListDistrict"
+    ).value = district;
+
+
+
+    document.getElementById(
+        "editListModal"
+    ).style.display = "block";
+
+}
+
+
+
+function closeEditListModal(){
+
+
+    document.getElementById(
+        "editListModal"
+    ).style.display = "none";
+
+}
+
+
+
+// ==================================================
+// EDIT CANDIDATE MODAL
+// ==================================================
+
+
+function openEditCandidateModal(
+    id,
+    name,
+    list,
+    subdistrict,
+    sect
+){
+
+    document.getElementById(
+        "editCandidateId"
+    ).value = id;
+
+    document.getElementById(
+        "editCandidateName"
+    ).value = name;
+
+    document.getElementById(
+        "editCandidateList"
+    ).value = list;
+
+    document.getElementById(
+        "editCandidateModal"
+    ).style.display = "block";
+
+
+    loadEditCandidateSubdistricts(
+        list,
+        subdistrict,
+        sect
+    );
+
+
+    document.getElementById(
+        "editCandidateList"
+    ).onchange = function(){
+
+        loadEditCandidateSubdistricts(
+            this.value,
+            null,
+            null
+        );
+
+    };
+
+
+    document.getElementById(
+        "editCandidateSubdistrict"
+    ).onchange = function(){
+
+        loadEditCandidateSects(
+            this.value,
+            null
+        );
+
+    };
+
+}
+
+
+
+function closeEditCandidateModal(){
+
+    document.getElementById(
+        "editCandidateModal"
+    ).style.display = "none";
+
+}
+function loadEditCandidateSects(
+    subdistrictId,
+    selectedSect
+){
+
+    let sect =
+        document.getElementById(
+            "editCandidateSect"
+        );
+
+    sect.innerHTML =
+        '<option value="">جاري تحميل الطوائف...</option>';
+
+    if(!subdistrictId){
+
+        sect.innerHTML =
+            '<option value="">اختر الطائفة</option>';
+
+        return;
+
+    }
+
+    fetch(
+        "/tenant/subdistrict-sects/" + subdistrictId
+    )
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        sect.innerHTML =
+            '<option value="">اختر الطائفة</option>';
+
+        data.forEach(s => {
+
+            let option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value = s.id;
+            option.textContent = s.name;
+
+            if(
+                selectedSect &&
+                s.id == selectedSect
+            ){
+                option.selected = true;
+            }
+
+            sect.appendChild(
+                option
+            );
+
+        });
+
+    });
+
+}
+
+
+
+function loadEditCandidateSubdistricts(
+    listId,
+    selectedSubdistrict,
+    selectedSect
+){
+
+    fetch(
+        "/tenant/list-subdistricts/" + listId
+    )
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        let subdistrict =
+            document.getElementById(
+                "editCandidateSubdistrict"
+            );
+
+        subdistrict.innerHTML =
+            '<option value="">اختر القضاء</option>';
+
+        data.forEach(s => {
+
+            let option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value = s.id;
+            option.textContent = s.name;
+
+            if(
+                selectedSubdistrict &&
+                s.id == selectedSubdistrict
+            ){
+                option.selected = true;
+            }
+
+            subdistrict.appendChild(
+                option
+            );
+
+        });
+
+        if(selectedSubdistrict){
+
+            loadEditCandidateSects(
+                selectedSubdistrict,
+                selectedSect
+            );
+
+        }
+
+    });
+
+}
+// ======================================
+// MOVE CANDIDATE MODAL
+// ======================================
+
+function openMoveCandidateModal(candidateId){
+
+    document.getElementById(
+        "moveCandidateForm"
+    ).action =
+        "/tenant/candidate/move/" + candidateId;
+
+    document.getElementById(
+        "moveCandidateModal"
+    ).style.display = "block";
+
+}
+
+
+function closeMoveCandidateModal(){
+
+    document.getElementById(
+        "moveCandidateModal"
+    ).style.display = "none";
+
+}
+</script>
+{% endblock %}

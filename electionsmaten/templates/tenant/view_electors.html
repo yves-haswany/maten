@@ -2,342 +2,652 @@
 
 {% block content %}
 
-<div class="page-container">
+<div class="page-header">
 
-    <h1>Electors</h1>
+    <h1>
+        لوائح الناخبين
+    </h1>
 
-    <table class="table">
+</div>
+
+
+<div class="page-container" dir="rtl" lang="ar">
+
+
+    <div class="top-actions">
+
+        <a href="{{ url_for('tenant.dashboard') }}"
+           class="logout-button">
+
+            العودة إلى لوحة التحكم
+
+        </a>
+
+    </div>
+
+
+
+    <div class="table-container">
+
+
+    <table class="table elector-table">
+
 
         <thead>
 
-<tr>
+        <tr>
 
-<th>
-    Elector ID
-    <input type="text" class="column-filter">
+
+            <th>
+                الدائرة
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                القضاء
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                البلدة
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                رقم الناخب
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                الاسم
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                اسم الشهرة
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                اسم العائلة
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                اسم الأب
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                اسم الأم
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                الجنس
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                تاريخ الولادة
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                مذهب الولادة
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                المذهب الحالي
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                السجل
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+
+            <th>
+                رقم السجل
+                <br>
+                <select class="column-filter"></select>
+            </th>
+
+            <th>
+    رقم القلم
+    <br>
+    <select class="column-filter"></select>
 </th>
+            <th>
+                متوفي
+                <br>
+                <select class="column-filter"></select>
+            </th>
 
 
-<th>
-    First Name
-    <input type="text" class="column-filter">
-</th>
+            <th>
+                مسجل
+                <br>
+                <select class="column-filter"></select>
+            </th>
 
 
-<th>
-    Surname
-    <input type="text" class="column-filter">
-</th>
+        </tr>
 
+        </thead>
 
-<th>
-    Family Name
-    <input type="text" class="column-filter">
-</th>
 
-
-<th>
-    Father
-    <input type="text" class="column-filter">
-</th>
-
-
-<th>
-    Mother
-    <input type="text" class="column-filter">
-</th>
-
-
-<!-- DROPDOWN -->
-<th>
-    Gender
-
-    <select class="column-filter">
-        <option value="">All</option>
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-    </select>
-
-</th>
-
-
-
-<th>
-    Date of Birth
-    <input type="text" class="column-filter">
-</th>
-
-
-
-<th>
-    Religion
-
-    <select class="column-filter">
-
-        <option value="">
-            All
-        </option>
-
-        {% for religion in religions %}
-
-        <option value="{{ religion.name|lower }}">
-            {{ religion.name }}
-        </option>
-
-        {% endfor %}
-
-    </select>
-
-</th>
-
-
-
-<th>
-    Sect
-
-    <select class="column-filter">
-
-        <option value="">
-            All
-        </option>
-
-        {% for sect in sects %}
-
-        <option value="{{ sect.name|lower }}">
-            {{ sect.name }}
-
-        </option>
-
-        {% endfor %}
-
-    </select>
-
-</th>
-
-
-
-
-<th>
-    District
-
-    <select class="column-filter">
-
-        <option value="">
-            All
-        </option>
-
-        {% for district in districts %}
-
-        <option value="{{ district.name|lower }}">
-            {{ district.name }}
-
-        </option>
-
-        {% endfor %}
-
-    </select>
-
-</th>
-
-
-
-
-<th>
-    Subdistrict
-
-    <select class="column-filter">
-
-        <option value="">
-            All
-        </option>
-
-        {% for subdistrict in subdistricts %}
-
-        <option value="{{ subdistrict.name|lower }}">
-            {{ subdistrict.name }}
-
-        </option>
-
-        {% endfor %}
-
-    </select>
-
-</th>
-
-
-
-<th>
-    Register
-    <input type="text" class="column-filter">
-</th>
-
-
-<th>
-    Register No.
-    <input type="text" class="column-filter">
-</th>
-
-
-
-<th>
-    Municipality
-
-    <select class="column-filter">
-
-        <option value="">
-            All
-        </option>
-
-        {% for municipality in municipalities %}
-
-        <option value="{{ municipality|lower }}">
-            {{ municipality }}
-        </option>
-
-        {% endfor %}
-
-    </select>
-
-</th>
-
-
-
-
-<th>
-    Address
-    <input type="text" class="column-filter">
-</th>
-
-
-
-<th>
-    Dead
-
-    <select class="column-filter">
-
-        <option value="">
-            All
-        </option>
-
-        <option value="yes">
-            Yes
-        </option>
-
-        <option value="no">
-            No
-        </option>
-
-    </select>
-
-</th>
-
-
-
-<th>
-    Registered
-
-    <select class="column-filter">
-
-        <option value="">
-            All
-        </option>
-
-        <option value="yes">
-            Yes
-        </option>
-
-        <option value="no">
-            No
-        </option>
-
-    </select>
-
-</th>
-
-
-
-<th>
-    Uploaded
-    <input type="text" class="column-filter">
-</th>
-
-
-</tr>
-
-</thead>
 
         <tbody>
 
+
         {% for elector in electors %}
 
-            <tr>
 
-                <td>{{ elector.elector_id }}</td>
+        <tr>
 
-                <td>{{ elector.first_name }}</td>
 
-                <td>{{ elector.surname }}</td>
+            <!-- 1 District -->
 
-                <td>{{ elector.family_name }}</td>
+            <td>
+                {{ elector.district.name if elector.district else "" }}
+            </td>
 
-                <td>{{ elector.father_name }}</td>
 
-                <td>{{ elector.mother_name }}</td>
+            <!-- 2 Subdistrict -->
 
-                <td>{{ elector.gender }}</td>
+            <td>
+                {{ elector.subdistrict.name if elector.subdistrict else "" }}
+            </td>
 
-                <td>{{ elector.dob or "" }}</td>
 
-                <td>{{ elector.religion_id }}</td>
+            <!-- 3 Town -->
 
-                <td>{{ elector.sect_id }}</td>
+            <td>
+                {{ elector.municipality }}
+            </td>
 
-                <td>{{ elector.district_id }}</td>
 
-                <td>{{ elector.subdistrict_id }}</td>
+            <!-- 4 Elector ID -->
 
-                <td>{{ elector.register }}</td>
+            <td>
+                {{ elector.elector_id }}
+            </td>
 
-                <td>{{ elector.register_number }}</td>
 
-                <td>{{ elector.municipality }}</td>
+            <!-- 5 First name -->
 
-                <td>{{ elector.address }}</td>
+            <td>
+                {{ elector.first_name }}
+            </td>
 
-                <td>
-                    {% if elector.is_dead %}
-                        Yes
-                    {% else %}
-                        No
-                    {% endif %}
-                </td>
 
-                <td>
-                    {% if elector.registered %}
-                        Yes
-                    {% else %}
-                        No
-                    {% endif %}
-                </td>
+            <!-- 6 Surname -->
 
-                <td>{{ elector.uploaded_at }}</td>
+            <td>
+                {{ elector.surname }}
+            </td>
 
-            </tr>
+
+            <!-- 7 Family name -->
+
+            <td>
+                {{ elector.family_name }}
+            </td>
+
+
+            <!-- 8 Father -->
+
+            <td>
+                {{ elector.father_name }}
+            </td>
+
+
+            <!-- 9 Mother -->
+
+            <td>
+                {{ elector.mother_name }}
+            </td>
+
+
+            <!-- 10 Gender -->
+
+            <td>
+                {{ elector.gender }}
+            </td>
+
+
+            <!-- 11 DOB -->
+
+            <td>
+                {{ elector.dob or "" }}
+            </td>
+
+
+            <!-- 12 Birth Sect -->
+
+            <td>
+                {{ elector.birth_sect.name if elector.birth_sect else "" }}
+            </td>
+
+
+            <!-- 13 Current Sect -->
+
+            <td>
+                {{ elector.current_sect.name if elector.current_sect else "" }}
+            </td>
+
+
+            <!-- 14 Register -->
+
+            <td>
+                {{ elector.register }}
+            </td>
+
+
+            <!-- 15 Register Number -->
+
+            <td>
+                {{ elector.register_number }}
+            </td>
+
+             <td>
+    {% if elector.ballot_pen %}
+        {{ elector.ballot_pen.serial_number }}
+    {% else %}
+        
+    {% endif %}
+</td>
+            <!-- 16 Dead -->
+
+            <td>
+
+                {% if elector.is_dead %}
+                    نعم
+                {% else %}
+                    لا
+                {% endif %}
+
+            </td>
+
+
+            <!-- 17 Registered -->
+
+            <td>
+
+                {% if elector.registered %}
+                    نعم
+                {% else %}
+                    لا
+                {% endif %}
+
+            </td>
+
+
+        </tr>
+
 
         {% else %}
 
-            <tr>
-                <td colspan="19">
-                    No electors found.
-                </td>
-            </tr>
+
+        <tr>
+
+            <td colspan="17">
+
+                لا يوجد ناخبون
+
+            </td>
+
+        </tr>
+
 
         {% endfor %}
 
+
         </tbody>
+
 
     </table>
 
+
+    </div>
+
+
 </div>
+
+
+
+<style>
+
+
+/* ================= TABLE CONTAINER ================= */
+
+
+.table-container{
+
+    width:100%;
+
+    max-height:650px;
+
+    overflow-y:scroll;
+
+    overflow-x:auto;
+
+}
+
+
+
+/* ================= TABLE ================= */
+
+
+.elector-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    background:white;
+
+}
+
+
+
+.elector-table th{
+
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:12px;
+
+    text-align:right;
+
+    white-space:nowrap;
+
+    position:sticky;
+
+    top:0;
+
+    z-index:10;
+
+}
+
+
+
+.elector-table td{
+
+    padding:10px;
+
+    border-bottom:1px solid #ddd;
+
+    text-align:right;
+
+    white-space:nowrap;
+
+}
+
+
+
+.elector-table tr:hover{
+
+    background:#f4f8f9;
+
+}
+
+
+
+/* ================= FILTER ================= */
+
+
+.column-filter{
+
+    margin-top:8px;
+
+    width:95%;
+
+    padding:5px;
+
+    border-radius:5px;
+
+    border:1px solid #ccc;
+
+    direction:rtl;
+
+    text-align:right;
+
+}
+
+
+
+/* ================= SCROLLBAR ================= */
+
+
+.table-container::-webkit-scrollbar{
+
+    width:12px;
+
+    height:12px;
+
+}
+
+
+
+.table-container::-webkit-scrollbar-thumb{
+
+    background:#0F5C6E;
+
+    border-radius:8px;
+
+}
+
+
+
+.table-container::-webkit-scrollbar-track{
+
+    background:#f1f1f1;
+
+}
+
+
+
+/* ================= TOP ACTION ================= */
+
+
+.top-actions{
+
+    display:flex;
+
+    justify-content:flex-start;
+
+    margin-bottom:20px;
+
+}
+
+
+
+.logout-button{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:10px 20px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+}
+
+
+.logout-button:hover{
+
+    background:#09414d;
+
+}
+
+
+</style>
+
+
+
+<script>
+
+
+const filters = document.querySelectorAll(".column-filter");
+
+
+
+filters.forEach((filter,index)=>{
+
+
+    let allOption=document.createElement("option");
+
+    allOption.value="";
+
+    allOption.textContent="الكل";
+
+    filter.appendChild(allOption);
+
+
+
+    let values=new Set();
+
+
+
+    document.querySelectorAll("tbody tr").forEach(row=>{
+
+
+        if(!row.cells[index])
+            return;
+
+
+        let value=row.cells[index].innerText.trim();
+
+
+        if(value)
+            values.add(value);
+
+
+    });
+
+
+
+    Array.from(values)
+
+    .sort((a,b)=>a.localeCompare(b,'ar'))
+
+    .forEach(value=>{
+
+
+        let option=document.createElement("option");
+
+
+        option.value=value;
+
+        option.textContent=value;
+
+
+        filter.appendChild(option);
+
+
+    });
+
+
+});
+
+
+
+
+filters.forEach(filter=>{
+
+    filter.addEventListener("change",filterTable);
+
+});
+
+
+
+
+function filterTable(){
+
+
+    const rows=document.querySelectorAll("tbody tr");
+
+
+    rows.forEach(row=>{
+
+
+        let visible=true;
+
+
+
+        filters.forEach((filter,index)=>{
+
+
+            let selected=filter.value.trim();
+
+
+
+            if(!selected)
+
+                return;
+
+
+
+            let value=row.cells[index].innerText.trim();
+
+
+
+            if(value!==selected)
+
+                visible=false;
+
+
+
+        });
+
+
+
+        row.style.display=visible ? "" : "none";
+
+
+    });
+
+
+}
+
+
+</script>
+
 
 {% endblock %}

@@ -2,25 +2,253 @@
 
 {% block content %}
 
-<h2>Entered Electors</h2>
+<style>
 
-<table>
-<tr>
-    <th>Elector ID</th>
-    <th>Time Entered</th>
-</tr>
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
 
-{% for e in electors %}
-<tr>
-    <td>{{ e.elector_id }}</td>
-    <td>{{ e.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-</tr>
-{% endfor %}
 
-</table>
+/* ================= HEADER ================= */
 
-<br>
+.arabic-header{
 
-<a href="{{ url_for('frontend_bp.dashboard') }}">← Back to Dashboard</a>
+    background:#0F5C6E;
+
+    color:white;
+
+    text-align:center;
+
+    padding:20px;
+
+    font-size:38px;
+
+    font-weight:bold;
+
+}
+
+
+/* ================= MAIN CONTAINER ================= */
+
+.page-container{
+
+    width:95%;
+
+    max-width:1200px;
+
+    margin:35px auto;
+
+    background:white;
+
+    border-radius:12px;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+
+    padding:30px;
+
+}
+
+
+/* ================= PAGE TITLE ================= */
+
+.page-title{
+
+    color:#0F5C6E;
+
+    text-align:center;
+
+    font-size:30px;
+
+    margin-bottom:30px;
+
+}
+
+
+/* ================= TABLE ================= */
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-top:20px;
+
+}
+
+
+th{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:14px;
+
+    font-size:18px;
+
+    text-align:center;
+
+}
+
+
+td{
+
+    padding:14px;
+
+    border-bottom:1px solid #ddd;
+
+    text-align:center;
+
+    font-size:17px;
+
+}
+
+
+tr:nth-child(even){
+
+    background:#f8f9fa;
+
+}
+
+
+tr:hover{
+
+    background:#eef6f8;
+
+}
+
+
+/* ================= BACK BUTTON ================= */
+
+.back-container{
+
+    text-align:center;
+
+    margin-top:35px;
+
+}
+
+
+.back-button{
+
+    display:inline-block;
+
+    background:#555;
+
+    color:white;
+
+    padding:12px 30px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:18px;
+
+    transition:.25s;
+
+}
+
+
+.back-button:hover{
+
+    background:#333;
+
+}
+
+</style>
+
+
+
+<div class="page-container">
+
+    <!-- HEADER -->
+
+    <div class="arabic-header">
+
+        الانتخابات النيابية 2028
+
+        <br>
+
+        {{ district_name }}
+
+        <br>
+
+        قلم رقم {{ ballot_number }}
+
+    </div>
+
+    <br>
+
+    <div class="page-title">
+
+        الناخبون الذين تم إدخالهم
+
+    </div>
+
+    <table>
+
+        <tr>
+
+            <th>
+                رقم هوية الناخب
+            </th>
+
+            <th>
+                وقت الإدخال
+            </th>
+
+        </tr>
+
+        {% for e in electors %}
+
+        <tr>
+
+            <td>
+
+                {{ e.elector_code }}
+
+            </td>
+
+            <td>
+
+                {{ e.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}
+
+            </td>
+
+        </tr>
+
+        {% else %}
+
+        <tr>
+
+            <td colspan="2">
+
+                لا يوجد ناخبون تم إدخالهم بعد.
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+    <div class="back-container">
+
+        <a href="{{ url_for('frontend_bp.dashboard') }}"
+           class="back-button">
+
+            العودة إلى لوحة التحكم
+
+        </a>
+
+    </div>
+
+</div>
 
 {% endblock %}

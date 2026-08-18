@@ -8,6 +8,8 @@ import os
 import pandas as pd
 from sqlalchemy.orm import joinedload, contains_eager
 from ... import db
+import gc
+import time
 from ...models.master_models import (
     Party,
     Tenant,
@@ -20,7 +22,10 @@ from ...models.master_models import (
 )
 
 from werkzeug.utils import secure_filename
-
+from electionsmaten.db.tenant_engine import (
+    TENANT_ENGINES,
+    TENANT_SESSIONS,
+)
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
@@ -464,43 +469,128 @@ import os
 @admin_required
 def delete_tenant(tenant_id):
 
+    print("DELETE TENANT ROUTE CALLED", tenant_id)
+
     tenant = Tenant.query.get_or_404(tenant_id)
+
     party = tenant.party
     db_name = tenant.db_name
 
-    # ----------------------------------------
-    # 1. Delete users linked to this tenant
-    # ----------------------------------------
-    users = User.query.filter_by(tenant_id=tenant.id).all()
-    for user in users:
-        db.session.delete(user)
+    try:
 
-    db.session.flush()
+        ####################################################
+        # Delete users
+        ####################################################
 
-    # ----------------------------------------
-    # 2. Delete tenant
-    # ----------------------------------------
-    db.session.delete(tenant)
-    db.session.flush()
+        users = User.query.filter_by(
+            tenant_id=tenant.id
+        ).all()
 
-    # ----------------------------------------
-    # 3. Delete party if empty
-    # ----------------------------------------
-    if party and len(party.tenants) == 0:
-        db.session.delete(party)
+        for user in users:
+            db.session.delete(user)
 
-    db.session.commit()
+        db.session.flush()
 
-    # ----------------------------------------
-    # 4. Delete tenant DB file
-    # ----------------------------------------
-    db_path = os.path.join(current_app.instance_path, f"{db_name}.db")
+        ####################################################
+        # Delete tenant
+        ####################################################
 
-    if os.path.exists(db_path):
-        os.remove(db_path)
+        db.session.delete(tenant)
+        db.session.flush()
 
-    flash("Tenant deleted successfully.", "success")
-    return redirect(url_for("admin.create_tenant"))
+        ####################################################
+        # Delete party if empty
+        ####################################################
+
+        if party and len(party.tenants) == 0:
+            db.session.delete(party)
+
+        db.session.commit()
+
+        ####################################################
+        # Close tenant scoped session
+        ####################################################
+
+        tenant_session = TENANT_SESSIONS.pop(
+            db_name,
+            None
+        )
+
+        if tenant_session is not None:
+            tenant_session.remove()
+
+        ####################################################
+        # Dispose engine
+        ####################################################
+
+        tenant_engine = TENANT_ENGINES.pop(
+            db_name,
+            None
+        )
+
+        if tenant_engine is not None:
+            tenant_engine.dispose()
+
+        ####################################################
+        # Force release of SQLite handles
+        ####################################################
+
+        gc.collect()
+
+        ####################################################
+        # Delete tenant database
+        ####################################################
+
+        db_path = os.path.join(
+            current_app.instance_path,
+            f"{db_name}.db"
+        )
+
+        if os.path.exists(db_path):
+
+            deleted = False
+
+            for _ in range(10):
+
+                try:
+                    os.remove(db_path)
+                    deleted = True
+                    break
+
+                except PermissionError:
+                    time.sleep(0.25)
+
+            if not deleted:
+
+                flash(
+                    "Tenant was removed, but the database file is still in use. "
+                    "Stop the application and delete the file manually.",
+                    "warning"
+                )
+
+                return redirect(
+                    url_for("admin.create_tenant")
+                )
+
+        flash(
+            "Tenant deleted successfully.",
+            "success"
+        )
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        print("DELETE TENANT ERROR:", repr(e))
+
+        flash(
+            f"Error deleting tenant: {e}",
+            "danger"
+        )
+
+    return redirect(
+        url_for("admin.create_tenant")
+    )
 
 
 # =========================
@@ -750,6 +840,7 @@ def view_electors():
         .order_by(
             District.name.asc(),
             SubDistrict.name.asc(),
+            Elector.municipality.asc(),
             Elector.register_number.asc()
         )
         .all()
@@ -828,9 +919,7 @@ def get_sect(name):
 @admin_bp.route("/upload-electors", methods=["GET", "POST"])
 @admin_required
 def upload_electors():
-
     if request.method == "POST":
-
         file = request.files.get("file")
 
         if not file or file.filename == "":
@@ -838,23 +927,15 @@ def upload_electors():
             return redirect(url_for("admin.upload_electors"))
 
         try:
-
             ####################################################
             # READ EXCEL
             ####################################################
-
             df = pd.read_excel(file)
-
-            df.columns = (
-                df.columns
-                .astype(str)
-                .str.strip()
-            )
+            df.columns = df.columns.astype(str).str.strip()
 
             ####################################################
             # REQUIRED COLUMNS
             ####################################################
-
             required_columns = [
                 ".Counter",
                 "Name",
@@ -871,243 +952,147 @@ def upload_electors():
                 "Rite",
                 "Register",
                 "RegisterN",
+                "BallotNb",
                 "Dead",
-                "Registered"
+                "Registered",
             ]
 
-            missing = [
-                c for c in required_columns
-                if c not in df.columns
-            ]
+            missing = [c for c in required_columns if c not in df.columns]
 
             if missing:
-                raise Exception(
-                    "Missing columns: "
-                    + ", ".join(missing)
-                )
+                raise Exception("Missing columns: " + ", ".join(missing))
 
             ####################################################
             # IMPORT ROWS
             ####################################################
-
             for _, row in df.iterrows():
-
                 ################################################
                 # DISTRICT
                 ################################################
-
                 district_name = str(row["Da2ira"]).strip()
                 district_aliases = {
-    "جبل لبنان الأولى": "دائرة جبل لبنان الأولى",
-    "جبل لبنان الثانية": "دائرة جبل لبنان الثانية",
-    "جبل لبنان الثالثة": "دائرة جبل لبنان الثالثة",
-    "جبل لبنان الرابعة": "دائرة جبل لبنان الرابعة",
-    "بيروت الأولى": "دائرة بيروت الأولى",
-    "بيروت الثانية": "دائرة بيروت الثانية",
-    "الشمال الأولى": "دائرة الشمال الأولى",
-    "الشمال الثانية": "دائرة الشمال الثانية",
-    "الشمال الثالثة": "دائرة الشمال الثالثة",
-    "البقاع الأولى": "دائرة البقاع الأولى",
-    "البقاع الثانية": "دائرة البقاع الثانية",
-    "البقاع الثالثة": "دائرة البقاع الثالثة",
-    "الجنوب الأولى": "دائرة الجنوب الأولى",
-    "الجنوب الثانية": "دائرة الجنوب الثانية",
-    "الجنوب الثالثة": "دائرة الجنوب الثالثة",
-    
-}
-                district_name = district_aliases.get(
-    district_name,
-    district_name
-)
-                district = District.query.filter_by(
-                    name=district_name
-                ).first()
+                    "جبل لبنان الأولى": "دائرة جبل لبنان الأولى",
+                    "جبل لبنان الثانية": "دائرة جبل لبنان الثانية",
+                    "جبل لبنان الثالثة": "دائرة جبل لبنان الثالثة",
+                    "جبل لبنان الرابعة": "دائرة جبل لبنان الرابعة",
+                    "بيروت الأولى": "دائرة بيروت الأولى",
+                    "بيروت الثانية": "دائرة بيروت الثانية",
+                    "الشمال الأولى": "دائرة الشمال الأولى",
+                    "الشمال الثانية": "دائرة الشمال الثانية",
+                    "الشمال الثالثة": "دائرة الشمال الثالثة",
+                    "البقاع الأولى": "دائرة البقاع الأولى",
+                    "البقاع الثانية": "دائرة البقاع الثانية",
+                    "البقاع الثالثة": "دائرة البقاع الثالثة",
+                    "الجنوب الأولى": "دائرة الجنوب الأولى",
+                    "الجنوب الثانية": "دائرة الجنوب الثانية",
+                    "الجنوب الثالثة": "دائرة الجنوب الثالثة",
+                }
+                district_name = district_aliases.get(district_name, district_name)
+                district = District.query.filter_by(name=district_name).first()
 
                 if not district:
-                    raise Exception(
-                        f"District not found: {district_name}"
-                    )
+                    raise Exception(f"District not found: {district_name}")
 
                 ################################################
                 # SUBDISTRICT
                 ################################################
-
                 subdistrict_name = str(row["Kazaa"]).strip()
-
                 subdistrict = (
                     SubDistrict.query
-                    .filter_by(
-                        district_id=district.id,
-                        name=subdistrict_name
-                    )
+                    .filter_by(district_id=district.id, name=subdistrict_name)
                     .first()
                 )
 
                 if not subdistrict:
-                    raise Exception(
-                        f"Subdistrict not found: {subdistrict_name}"
-                    )
+                    raise Exception(f"Subdistrict not found: {subdistrict_name}")
 
                 ################################################
                 # BIRTH SECT
                 ################################################
-
                 birth_sect = get_sect(row["Sect"])
 
                 ################################################
                 # CURRENT SECT (RITE)
                 ################################################
-
                 current_sect = get_sect(row["Rite"])
 
                 ################################################
                 # DOB
                 ################################################
-
                 dob = None
-
                 if pd.notna(row["DOB"]):
-                    dob = pd.to_datetime(
-                        row["DOB"]
-                    ).date()
+                    dob = pd.to_datetime(row["DOB"]).date()
 
                 ################################################
                 # DEAD
                 ################################################
-
                 dead_value = str(row["Dead"]).strip().lower()
-
-                is_dead = dead_value in (
-                    "1",
-                    "true",
-                    "yes",
-                    "نعم"
-                )
+                is_dead = dead_value in ("1", "true", "yes", "نعم")
 
                 ################################################
                 # REGISTERED
                 ################################################
-
-                registered_value = str(
-                    row["Registered"]
-                ).strip().lower()
-
-                registered = registered_value in (
-                    "1",
-                    "true",
-                    "yes",
-                    "نعم"
-                )
+                registered_value = str(row["Registered"]).strip().lower()
+                registered = registered_value in ("1", "true", "yes", "نعم")
 
                 ################################################
                 # FIND EXISTING ELECTOR
                 ################################################
-
-                elector_id = str(
-                    row[".Counter"]
-                ).strip()
-
-                elector = Elector.query.filter_by(
-                    elector_id=elector_id
-                ).first()
+                elector_id = str(row[".Counter"]).strip()
+                elector = Elector.query.filter_by(elector_id=elector_id).first()
 
                 ################################################
                 # CREATE IF NOT EXISTS
                 ################################################
-
                 if not elector:
-
-                    elector = Elector(
-                        elector_id=elector_id
-                    )
-
+                    elector = Elector(elector_id=elector_id)
                     db.session.add(elector)
 
                 ################################################
                 # UPDATE DATA
                 ################################################
-
-                elector.first_name = str(
-                    row["Name"]
-                ).strip()
-
-                elector.surname = str(
-                    row["Surname"]
-                ).strip()
-
-                elector.family_name = str(
-                    row["Family"]
-                ).strip()
-
-                elector.father_name = str(
-                    row["Father"]
-                ).strip()
-
-                elector.mother_name = str(
-                    row["Mother"]
-                ).strip()
-
-                elector.gender = str(
-                    row["Gender"]
-                ).strip()
-
+                elector.first_name = str(row["Name"]).strip()
+                elector.surname = str(row["Surname"]).strip()
+                elector.family_name = str(row["Family"]).strip()
+                elector.father_name = str(row["Father"]).strip()
+                elector.mother_name = str(row["Mother"]).strip()
+                elector.gender = str(row["Gender"]).strip()
                 elector.dob = dob
-
-                elector.birth_sect_id = (
-    birth_sect.id
-    if birth_sect
-    else None
-)
-
-                elector.current_sect_id = (
-    current_sect.id
-    if current_sect
-    else None
-)
-
+                elector.birth_sect_id = birth_sect.id if birth_sect else None
+                elector.current_sect_id = current_sect.id if current_sect else None
                 elector.district_id = district.id
-
                 elector.subdistrict_id = subdistrict.id
+                elector.municipality = str(row["Balda"]).strip()
+                elector.register = str(row["Register"]).strip()
+                elector.register_number = int(row["RegisterN"])
 
-                elector.municipality = str(
-                    row["Balda"]
-                ).strip()
-
-                elector.register = str(
-                    row["Register"]
-                ).strip()
-
-                elector.register_number = int(
-                    row["RegisterN"]
-                )
+                # Handle ballot number
+                if pd.notna(row["BallotNb"]):
+                    ballot_number = int(row["BallotNb"])
+                    elector.ballot_number = ballot_number
+                    ballot_pen = BallotPen.query.filter_by(code=str(ballot_number)).first()
+                    if ballot_pen:
+                        elector.ballot_pen_id = ballot_pen.id
+                    else:
+                        elector.ballot_pen_id = None
+                else:
+                    elector.ballot_number = None
+                    elector.ballot_pen_id = None
 
                 elector.is_dead = is_dead
-
                 elector.registered = registered
 
             ####################################################
             # SAVE
             ####################################################
-
             db.session.commit()
-
-            flash(
-                "Electors uploaded successfully.",
-                "success"
-            )
+            flash("Electors uploaded successfully.", "success")
 
         except Exception as e:
-
             db.session.rollback()
+            flash(f"Upload failed: {e}", "error")
 
-            flash(
-                f"Upload failed: {e}",
-                "error"
-            )
-
-        return redirect(
-            url_for("admin.upload_electors")
-        )
+        return redirect(url_for("admin.upload_electors"))
 
     return render_template(
         "admin/upload_electors.html",

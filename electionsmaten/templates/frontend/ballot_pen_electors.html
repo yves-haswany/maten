@@ -1,0 +1,55 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<div class="page-header">
+    <h1>الناخبون الموجودون في هذا القلم</h1>
+</div>
+
+<div class="page-container">
+
+<table class="table">
+
+    <thead>
+        <tr>
+            <th>رقم الناخب</th>
+            <th>الاسم</th>
+            <th>العائلة</th>
+            <th>رقم القلم</th>
+            <th>تم الإدخال</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+    {% for elector in electors %}
+
+    <tr>
+
+        <td>{{ elector.elector_id }}</td>
+
+        <td>{{ elector.first_name }}</td>
+
+        <td>{{ elector.family_name }}</td>
+
+        <td>{{ elector.ballot_number }}</td>
+
+        <td>
+            {% if elector.submission %}
+                نعم
+            {% else %}
+                لا
+            {% endif %}
+        </td>
+
+    </tr>
+
+    {% endfor %}
+
+    </tbody>
+
+</table>
+
+</div>
+
+{% endblock %}

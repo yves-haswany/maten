@@ -10,7 +10,7 @@ from flask import (
 
 from werkzeug.security import check_password_hash
 
-from ..models.master_models import User
+from ..models.master_models import User, BallotPen,Tenant
 
 
 auth_bp = Blueprint(
@@ -32,36 +32,173 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
-        user = User.query.filter_by(username=username).first()
+        ####################################################
+        # Authenticate
+        ####################################################
 
-        # unified failure (no user enumeration leak)
-        if not user or not check_password_hash(user.password, password):
-            flash("Invalid username or password", "danger")
-            return redirect(url_for("auth.login"))
+        user = User.query.filter_by(
+            username=username
+        ).first()
+
+        if (
+            not user
+            or not check_password_hash(
+                user.password,
+                password
+            )
+        ):
+
+            flash(
+                "Invalid username or password",
+                "danger"
+            )
+
+            return redirect(
+                url_for("auth.login")
+            )
+
+        ####################################################
+        # Clear old session
+        ####################################################
 
         session.clear()
 
         session["user_id"] = user.id
         session["role"] = user.role
 
-        role_redirects = {
-            "admin": ("admin.dashboard", {}),
-            "tenant": ("tenant.dashboard", {"tenant_id": user.tenant_id}),
-            "district": ("district.dashboard", {"district_id": user.district_id}),
-            "ballot": ("ballot.dashboard", {"ballot_pen_id": user.ballot_pen_id}),
-        }
+        ####################################################
+        # Ballot pen users
+        ####################################################
 
-        if user.role in role_redirects:
-            endpoint, extra_session = role_redirects[user.role]
+        if user.role == "ballot_pen":
 
-            session.update(extra_session)
+            ballot_pen_ids = [
+                pen.id
+                for pen in user.ballot_pens
+            ]
 
-            return redirect(url_for(endpoint))
+            session["ballot_pen_ids"] = ballot_pen_ids
 
-        flash("Unknown account type", "danger")
-        return redirect(url_for("auth.login"))
+            if not ballot_pen_ids:
 
-    return render_template("auth/login.html")
+                flash(
+                    "No ballot pens assigned to this account",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for("auth.login")
+                )
+
+            ################################################
+            # Get first ballot pen
+            ################################################
+
+            ballot_pen = user.ballot_pens[0]
+
+            ################################################
+            # Find tenant that participates
+            # in this district
+            ################################################
+
+            tenant = (
+                Tenant.query
+                .filter(
+                    Tenant.districts.any(
+                        id=ballot_pen.district_id
+                    )
+                )
+                .first()
+            )
+
+            if tenant is None:
+
+                flash(
+                    "No tenant found for this ballot pen",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for("auth.login")
+                )
+
+            ################################################
+            # Save tenant information
+            ################################################
+
+            session["tenant_id"] = tenant.id
+            session["tenant_db"] = tenant.db_name
+
+            return redirect(
+                url_for(
+                    "frontend_bp.dashboard"
+                )
+            )
+
+        ####################################################
+        # Tenant users
+        ####################################################
+
+        if user.role == "tenant":
+
+            session["tenant_id"] = user.tenant_id
+
+            tenant = Tenant.query.get(
+                user.tenant_id
+            )
+
+            if tenant:
+
+                session["tenant_db"] = tenant.db_name
+
+            return redirect(
+                url_for(
+                    "tenant.dashboard"
+                )
+            )
+
+        ####################################################
+        # District users
+        ####################################################
+
+        if user.role == "district":
+
+            session["district_id"] = user.district_id
+
+            return redirect(
+                url_for(
+                    "district.dashboard"
+                )
+            )
+
+        ####################################################
+        # Admin users
+        ####################################################
+
+        if user.role == "admin":
+
+            return redirect(
+                url_for(
+                    "admin.dashboard"
+                )
+            )
+
+        ####################################################
+        # Unknown role
+        ####################################################
+
+        flash(
+            "Unknown account type",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+    return render_template(
+        "auth/login.html"
+    )
 
 
 # ----------------------------------

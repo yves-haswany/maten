@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Create Candidate</title>
+    <title>تعريف مرشح</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
@@ -9,45 +9,70 @@
 
 <div class="form-container">
 
-<h2>Create Candidate</h2>
+<h2>تعريف مرشح</h2>
 
 <form method="POST">
 
-<div class="form-group">
-<label>Candidate Name</label>
-<input type="text" name="name" required>
+    <div class="form-group">
+        <label>اسم المرشح</label>
+        <input type="text" name="name" required>
+    </div>
+
+    <!--<div class="form-group">
+        <label>اسم الحزب</label>
+        <input type="text" name="party_name" required>
+    </div>-->
+
+    <div class="form-group">
+    <label>اسم القائمة</label>
+
+    <select name="list_id" required>
+
+        <option value="">-- اختر القائمة --</option>
+
+        {% for list in lists %}
+
+        <option value="{{ list.id }}"
+                {% if list.id == candidate_list.id %}selected{% endif %}>
+            {{ list.name }}
+        </option>
+
+        {% endfor %}
+
+    </select>
 </div>
-
 <div class="form-group">
-<label>Party Name</label>
-<input type="text" name="party_name" required>
-</div>
 
-<div class="form-group">
-<label>Candidate List</label>
+<label>الطائفة</label>
 
-<select name="list_id" required>
+<select name="sect_id" required>
 
-<option value="">Select List</option>
+<option value="">
+-- اختر الطائفة --
+</option>
 
-{% for list in lists %}
 
-<option value="{{ list.id }}">
-{{ list.name }}
+{% for sect in sects %}
+
+<option value="{{ sect.id }}">
+{{ sect.name }}
 </option>
 
 {% endfor %}
 
+
 </select>
 
 </div>
-
-<button type="submit">Create Candidate</button>
+    <button type="submit">
+        حفظ معلومات المرشح
+    </button>
 
 </form>
 
+
 <a href="{{ url_for('tenant.dashboard') }}" class="back-link">
-Back to Dashboard
+    العودة إلى لوحة التحكم
 </a>
 
 </div>
