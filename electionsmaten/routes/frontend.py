@@ -3,7 +3,7 @@ from datetime import datetime
 import re
 from .. import db
 from ..models.master_models import Elector, BallotPen, District, Tenant
-from ..models.tenant_models import CandidateList, Candidate, Vote, BallotPenAccount, ElectorSubmission
+from ..models.tenant_models import CandidateList, Candidate, Vote, BallotPenAccount, ElectorSubmission, CanceledPaper
 from werkzeug.security import check_password_hash
 import uuid
 from ..db.tenant_base import TenantBase
@@ -582,7 +582,9 @@ def view_electors():
 def cast_vote():
 
     if not is_logged_in():
-        return redirect(url_for("auth.login"))
+        return redirect(
+            url_for("auth.login")
+        )
 
 
     # ---------------------------------
@@ -593,7 +595,6 @@ def cast_vote():
         "ballot_pen_ids",
         []
     )
-
 
     if not ballot_pen_ids:
 
@@ -619,7 +620,6 @@ def cast_vote():
         ballot_pen_id
     )
 
-
     if not ballot_pen:
 
         flash(
@@ -641,7 +641,6 @@ def cast_vote():
     for t in ballot_pen.district.tenants:
 
         tenant = t
-
         break
 
 
@@ -664,12 +663,13 @@ def cast_vote():
 
     try:
 
-        # ---------------------------------
-        # Count submitted electors
-        # ---------------------------------
+        # =================================
+        # TOTAL ELECTORS
+        # =================================
 
         elector_count = (
-            tenant_session.query(ElectorSubmission)
+            tenant_session
+            .query(ElectorSubmission)
             .filter_by(
                 ballot_pen_id=ballot_pen_id
             )
@@ -677,33 +677,114 @@ def cast_vote():
         )
 
 
-        # ---------------------------------
-        # Count votes already submitted
-        # ---------------------------------
+        # =================================
+        # VALID PAPERS
+        # =================================
 
-        vote_count = (
-            tenant_session.query(Vote)
+        valid_vote_count = (
+            tenant_session
+            .query(Vote)
+            .filter(
+                Vote.ballot_pen_id == ballot_pen_id,
+                Vote.list_id.isnot(None)
+            )
+            .count()
+        )
+
+
+        # =================================
+        # BLANK PAPERS
+        # =================================
+
+        blank_vote_count = (
+            tenant_session
+            .query(Vote)
+            .filter(
+                Vote.ballot_pen_id == ballot_pen_id,
+                Vote.list_id.is_(None),
+                Vote.candidate_id.is_(None)
+            )
+            .count()
+        )
+
+
+        # =================================
+        # CANCELED PAPERS
+        # =================================
+
+        canceled_vote_count = (
+            tenant_session
+            .query(CanceledPaper)
             .filter_by(
                 ballot_pen_id=ballot_pen_id
             )
             .count()
+        )
+
+
+        # =================================
+        # TOTAL PROCESSED
+        # =================================
+
+        vote_count = (
+            valid_vote_count
+            + blank_vote_count
+            + canceled_vote_count
+        )
+
+
+        # =================================
+        # REMAINING
+        # =================================
+
+        remaining_count = (
+            elector_count
+            - vote_count
         )
 
 
         print(
-            "Electors submitted:",
+            "=============================="
+        )
+
+        print(
+            "Electors:",
             elector_count
         )
 
         print(
-            "Votes submitted:",
+            "Valid:",
+            valid_vote_count
+        )
+
+        print(
+            "Blank:",
+            blank_vote_count
+        )
+
+        print(
+            "Canceled:",
+            canceled_vote_count
+        )
+
+        print(
+            "Processed:",
             vote_count
         )
 
+        print(
+            "Remaining:",
+            remaining_count
+        )
 
-        # ---------------------------------
-        # Prevent extra votes
-        # ---------------------------------
+        print(
+            "=============================="
+        )
+
+
+        # =================================
+        # PREVENT EXTRA VOTES
+        # =================================
 
         if vote_count >= elector_count:
 
@@ -713,16 +794,19 @@ def cast_vote():
             )
 
             return redirect(
-                url_for("frontend_bp.dashboard")
+                url_for(
+                    "frontend_bp.dashboard"
+                )
             )
 
 
-        # ---------------------------------
-        # Load candidate lists
-        # ---------------------------------
+        # =================================
+        # LOAD LISTS
+        # =================================
 
         lists = (
-            tenant_session.query(CandidateList)
+            tenant_session
+            .query(CandidateList)
             .filter_by(
                 district_id=ballot_pen.district_id
             )
@@ -732,9 +816,18 @@ def cast_vote():
 
         return render_template(
             "frontend/vote.html",
+
             lists=lists,
+
             elector_count=elector_count,
-            vote_count=vote_count
+
+            valid_vote_count=valid_vote_count,
+
+            blank_vote_count=blank_vote_count,
+
+            canceled_vote_count=canceled_vote_count,
+
+            remaining_count=remaining_count
         )
 
 
@@ -801,8 +894,15 @@ def get_candidates(list_id):
 # SUBMIT VOTE
 # ----------------------------
 
-@frontend_bp.route("/submit-vote", methods=["POST"])
+@frontend_bp.route(
+    "/submit-vote",
+    methods=["POST"]
+)
 def submit_vote():
+
+    # =============================================
+    # AUTHORIZATION
+    # =============================================
 
     if not is_logged_in():
 
@@ -811,142 +911,208 @@ def submit_vote():
         }, 401
 
 
+    # =============================================
+    # GET SUBMITTED VALUES
+    # =============================================
 
-    # ---------------------------------
-    # Get submitted values
-    # ---------------------------------
+    vote_type = request.form.get(
+        "vote_type"
+    )
 
-    list_id = request.form.get(
-        "list_id"
-    ) or None
+    list_id = (
+        request.form.get(
+            "list_id"
+        )
+        or None
+    )
+
+    candidate_id = (
+        request.form.get(
+            "candidate_id"
+        )
+        or None
+    )
 
 
-    candidate_id = request.form.get(
-        "candidate_id"
-    ) or None
+    # =============================================
+    # VALIDATE VOTE TYPE
+    # =============================================
+
+    if vote_type not in [
+        "normal",
+        "blank",
+        "canceled"
+    ]:
+
+        return {
+            "error":
+            "يرجى اختيار نوع الورقة"
+        }, 400
 
 
-
-    # ---------------------------------
-    # Get logged-in ballot pen
-    # ---------------------------------
+    # =============================================
+    # GET LOGGED-IN BALLOT PEN
+    # =============================================
 
     ballot_pen_ids = session.get(
         "ballot_pen_ids",
         []
     )
 
-
     if not ballot_pen_ids:
 
         return {
-            "error": "No ballot pen assigned"
+            "error":
+            "No ballot pen assigned"
         }, 400
-
 
 
     ballot_pen_id = ballot_pen_ids[0]
 
 
-
-    # ---------------------------------
-    # Get ballot pen from master DB
-    # ---------------------------------
+    # =============================================
+    # GET BALLOT PEN FROM MASTER DATABASE
+    # =============================================
 
     ballot_pen = db.session.get(
         BallotPen,
         ballot_pen_id
     )
 
-
     if not ballot_pen:
 
         return {
-            "error": "Ballot pen not found"
+            "error":
+            "Ballot pen not found"
         }, 400
 
 
-
-    # ---------------------------------
-    # Find tenant
-    # ---------------------------------
+    # =============================================
+    # FIND TENANT
+    # =============================================
 
     tenant = None
-
 
     for t in ballot_pen.district.tenants:
 
         tenant = t
-
         break
-
 
 
     if not tenant:
 
         return {
-            "error": "Tenant not found"
+            "error":
+            "Tenant not found"
         }, 400
 
 
+    # =============================================
+    # OPEN TENANT DATABASE
+    # =============================================
 
     tenant_session = get_tenant_session(
         tenant.db_name
     )
 
 
-
     try:
 
-
-        # ---------------------------------
-        # Count submitted electors
-        # Tenant DB
-        # ---------------------------------
+        # =============================================
+        # COUNT ELECTORS
+        #
+        # عدد المقترعين
+        # =============================================
 
         elector_count = (
-            tenant_session.query(ElectorSubmission)
+
+            tenant_session
+            .query(ElectorSubmission)
             .filter_by(
                 ballot_pen_id=ballot_pen_id
             )
             .count()
+
         )
 
 
+        # =============================================
+        # COUNT VALID PAPERS
+        #
+        # عدد الأوراق الصحيحة
+        #
+        # List only OR list + candidate
+        # =============================================
 
-        # ---------------------------------
-        # Count existing votes
-        # Tenant DB
-        # ---------------------------------
+        valid_vote_count = (
 
-        vote_count = (
-            tenant_session.query(Vote)
+            tenant_session
+            .query(Vote)
+            .filter(
+                Vote.ballot_pen_id == ballot_pen_id,
+                Vote.list_id.isnot(None)
+            )
+            .count()
+
+        )
+
+
+        # =============================================
+        # COUNT BLANK PAPERS
+        #
+        # أوراق بيضاء
+        # =============================================
+
+        blank_vote_count = (
+
+            tenant_session
+            .query(Vote)
+            .filter(
+                Vote.ballot_pen_id == ballot_pen_id,
+                Vote.list_id.is_(None),
+                Vote.candidate_id.is_(None)
+            )
+            .count()
+
+        )
+
+
+        # =============================================
+        # COUNT CANCELED PAPERS
+        #
+        # أوراق ملغاة
+        # =============================================
+
+        canceled_vote_count = (
+
+            tenant_session
+            .query(CanceledPaper)
             .filter_by(
                 ballot_pen_id=ballot_pen_id
             )
             .count()
+
         )
 
 
+        # =============================================
+        # TOTAL PROCESSED PAPERS
+        # =============================================
 
-        print(
-            "Elector count:",
-            elector_count
+        processed_count = (
+
+            valid_vote_count
+            + blank_vote_count
+            + canceled_vote_count
+
         )
 
 
-        print(
-            "Vote count:",
-            vote_count
-        )
+        # =============================================
+        # PREVENT EXTRA PAPERS
+        # =============================================
 
-
-
-        # ---------------------------------
-        # Block extra votes
-        # ---------------------------------
-
-        if vote_count >= elector_count:
+        if processed_count >= elector_count:
 
             return {
                 "error":
@@ -954,86 +1120,285 @@ def submit_vote():
             }, 400
 
 
+        # ==================================================
+        # NORMAL VOTE
+        # ==================================================
 
-        # ---------------------------------
-        # Validate selection
-        # ---------------------------------
+        if vote_type == "normal":
 
-        if not list_id and candidate_id:
+            # ----------------------------------------------
+            # LIST REQUIRED
+            # ----------------------------------------------
 
-            return {
-                "error":
-                "Select a list first"
-            }, 400
+            if not list_id:
 
-
-
-        if list_id and candidate_id:
+                return {
+                    "error":
+                    "يرجى اختيار اللائحة"
+                }, 400
 
 
-            candidate = (
-                tenant_session.query(Candidate)
+            # ----------------------------------------------
+            # VALIDATE LIST ID
+            # ----------------------------------------------
+
+            try:
+
+                list_id_int = int(
+                    list_id
+                )
+
+            except ValueError:
+
+                return {
+                    "error":
+                    "رقم اللائحة غير صالح"
+                }, 400
+
+
+            # ----------------------------------------------
+            # GET LIST
+            # ----------------------------------------------
+
+            candidate_list = (
+
+                tenant_session
+                .query(CandidateList)
                 .filter_by(
-                    id=int(candidate_id)
+                    id=list_id_int
                 )
                 .first()
+
             )
 
 
-            if not candidate:
+            if not candidate_list:
 
                 return {
                     "error":
-                    "Candidate not found"
+                    "اللائحة غير موجودة"
                 }, 400
 
 
+            # ----------------------------------------------
+            # MAKE SURE LIST BELONGS TO DISTRICT
+            # ----------------------------------------------
 
-            if str(candidate.candidate_list_id) != str(list_id):
+            if (
+                candidate_list.district_id
+                != ballot_pen.district_id
+            ):
 
                 return {
                     "error":
-                    "Invalid candidate selection"
+                    "هذه اللائحة لا تنتمي إلى الدائرة الحالية"
                 }, 400
 
 
+            # ----------------------------------------------
+            # CANDIDATE IS OPTIONAL
+            # ----------------------------------------------
 
-        # ---------------------------------
-        # Create vote
-        # ---------------------------------
-
-        vote = Vote(
-
-            list_id=(
-                int(list_id)
-                if list_id
-                else None
-            ),
+            candidate_id_int = None
 
 
-            candidate_id=(
-                int(candidate_id)
-                if candidate_id
-                else None
-            ),
+            if candidate_id:
+
+                try:
+
+                    candidate_id_int = int(
+                        candidate_id
+                    )
+
+                except ValueError:
+
+                    return {
+                        "error":
+                        "رقم المرشح غير صالح"
+                    }, 400
 
 
-            ballot_pen_id=ballot_pen_id
+                candidate = (
 
-        )
+                    tenant_session
+                    .query(Candidate)
+                    .filter_by(
+                        id=candidate_id_int
+                    )
+                    .first()
+
+                )
 
 
-        tenant_session.add(vote)
+                if not candidate:
+
+                    return {
+                        "error":
+                        "المرشح غير موجود"
+                    }, 400
 
 
-        tenant_session.commit()
+                # ------------------------------------------
+                # CANDIDATE MUST BELONG TO SELECTED LIST
+                # ------------------------------------------
+
+                if (
+                    candidate.candidate_list_id
+                    != list_id_int
+                ):
+
+                    return {
+                        "error":
+                        "المرشح لا ينتمي إلى اللائحة المختارة"
+                    }, 400
 
 
+            # ----------------------------------------------
+            # CREATE VALID VOTE
+            # ----------------------------------------------
 
-        return {
-            "success": True
-        }
+            vote = Vote(
 
+                ballot_pen_id=ballot_pen_id,
+
+                district_id=(
+                    ballot_pen.district_id
+                ),
+
+                subdistrict_id=(
+                    ballot_pen.subdistrict_id
+                ),
+
+                list_id=list_id_int,
+
+                candidate_id=candidate_id_int
+
+            )
+
+
+            tenant_session.add(
+                vote
+            )
+
+            tenant_session.commit()
+
+
+            # ----------------------------------------------
+            # RESPONSE
+            # ----------------------------------------------
+
+            if candidate_id_int is not None:
+
+                return {
+                    "success": True,
+                    "type": "candidate"
+                }
+
+
+            return {
+                "success": True,
+                "type": "list"
+            }
+
+
+        # ==================================================
+        # BLANK PAPER
+        # ==================================================
+
+        elif vote_type == "blank":
+
+            # ----------------------------------------------
+            # BLANK PAPER CANNOT HAVE A LIST OR CANDIDATE
+            # ----------------------------------------------
+
+            if list_id or candidate_id:
+
+                return {
+                    "error":
+                    "الورقة البيضاء لا يمكن أن تحتوي على لائحة أو مرشح"
+                }, 400
+
+
+            # ----------------------------------------------
+            # CREATE BLANK VOTE
+            # ----------------------------------------------
+
+            vote = Vote(
+
+                ballot_pen_id=ballot_pen_id,
+
+                district_id=(
+                    ballot_pen.district_id
+                ),
+
+                subdistrict_id=(
+                    ballot_pen.subdistrict_id
+                ),
+
+                list_id=None,
+
+                candidate_id=None
+
+            )
+
+
+            tenant_session.add(
+                vote
+            )
+
+            tenant_session.commit()
+
+
+            return {
+                "success": True,
+                "type": "blank"
+            }
+
+
+        # ==================================================
+        # CANCELED PAPER
+        # ==================================================
+
+        elif vote_type == "canceled":
+
+            # ----------------------------------------------
+            # CANCELED PAPER CANNOT HAVE A LIST OR CANDIDATE
+            # ----------------------------------------------
+
+            if list_id or candidate_id:
+
+                return {
+                    "error":
+                    "الورقة الملغاة لا يمكن أن تحتوي على لائحة أو مرشح"
+                }, 400
+
+
+            # ----------------------------------------------
+            # CREATE CANCELED PAPER
+            # ----------------------------------------------
+
+            canceled_paper = CanceledPaper(
+
+                ballot_pen_id=ballot_pen_id,
+
+                district_id=(
+                    ballot_pen.district_id
+                )
+
+            )
+
+
+            tenant_session.add(
+                canceled_paper
+            )
+
+            tenant_session.commit()
+
+
+            return {
+                "success": True,
+                "type": "canceled"
+            }
 
 
     except Exception as e:
@@ -1050,11 +1415,9 @@ def submit_vote():
         }, 500
 
 
-
     finally:
 
         tenant_session.close()
-
 
 # ----------------------------
 # RESULTS VIEW

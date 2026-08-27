@@ -7,13 +7,17 @@ from flask import (
     session,
     flash,
     Response,
-    abort
+    abort,
+    make_response
 )
+from ...routes.frontend import is_logged_in
+from collections import defaultdict
 from sqlalchemy.orm import joinedload
 from werkzeug.security import (
     check_password_hash,
     generate_password_hash
 )
+from ...db.tenant_engine import get_tenant_session
 from collections import OrderedDict
 from sqlalchemy import func, distinct
 
@@ -38,7 +42,9 @@ from ...models.tenant_models import (
     CandidateList,
     Candidate,
     Vote,
-    BallotPenAccount
+    BallotPenAccount,
+    PoliticalAllegiance,
+    ElectorSubmission
 )
 from ...db.tenant_engine import get_tenant_session
 from ...db.master_db import db
@@ -51,7 +57,13 @@ tenant_bp = Blueprint(
 # ==========================================================
 # HELPERS
 # ==========================================================
+def is_tenant_logged_in():
 
+    return (
+        session.get("tenant_id") is not None
+        and
+        session.get("tenant_db") is not None
+    )
 def get_current_tenant():
     """
     Returns the currently logged-in tenant.
@@ -690,53 +702,76 @@ def update_ballot_pen_password(ballot_pen_id):
 @tenant_bp.route("/manage-lists")
 def manage_lists():
 
+    if session.get("role") != "tenant":
+        abort(403)
+
     tenant = get_current_tenant()
 
     if tenant is None:
-        return redirect(url_for("tenant.login"))
-
+        abort(403)
 
     tenant_session = get_tenant_session(
         tenant.db_name
     )
 
-
     try:
 
+        # ==========================================
+        # LOAD CANDIDATE LISTS
+        # ==========================================
+
         lists = (
-            tenant_session.query(CandidateList)
-            .options(
-                joinedload(
-                    CandidateList.candidates
-                )
-            )
-            .order_by(
-                CandidateList.name
+            tenant_session.query(
+                CandidateList
             )
             .all()
         )
 
+        # ==========================================
+        # LOAD DISTRICTS
+        # ==========================================
 
-        districts = get_selected_districts(
-            tenant
+        districts = (
+            db.session.query(
+                District
+            )
+            .all()
         )
 
-
         district_map = {
-            d.id:d.name
-            for d in districts
+            district.id: district.name
+            for district in districts
         }
 
+        # ==========================================
+        # LOAD POLITICAL ALLEGIANCES
+        # ==========================================
+
+        allegiances = (
+            tenant_session.query(
+                PoliticalAllegiance
+            )
+            .all()
+        )
+
+        print(
+            "ALLEGIANCES:",
+            [
+                (a.id, a.name, a.district_id)
+                for a in allegiances
+            ]
+        )
 
         return render_template(
             "tenant/manage_lists.html",
             lists=lists,
             districts=districts,
-            district_map=district_map
+            district_map=district_map,
+            allegiances=allegiances
         )
 
-
     finally:
+
         tenant_session.close()
 # ==========================================================
 # CREATE LIST
@@ -1399,7 +1434,7 @@ def add_candidate(list_id):
         ####################################################
 
         flash(
-            "Candidate added successfully.",
+            "تمت إضافة المرشح بنجاح",
             "success"
         )
 
@@ -1565,7 +1600,7 @@ def delete_candidate(candidate_id):
 
 
         flash(
-            "Candidate deleted successfully.",
+            "تم حذف المرشح بنجاح",
             "success"
         )
 
@@ -1682,7 +1717,7 @@ def move_candidate(candidate_id):
 
 
         flash(
-            "Candidate moved successfully.",
+            "تم نقل المرشح بنجاح",
             "success"
         )
 
@@ -1697,98 +1732,370 @@ def move_candidate(candidate_id):
     finally:
 
         tenant_session.close()
+from sqlalchemy import func
+
 @tenant_bp.route("/results")
 def tenant_results():
 
-    tenant = get_current_tenant()
+    # ==========================================
+    # GET TENANT DATABASE
+    # ==========================================
 
-    if tenant is None:
-        return redirect(url_for("auth.login"))
-
-
-    ##################################################
-    # Get tenant districts
-    ##################################################
-
-    districts = (
-    District.query
-    .join(tenant_district)
-    .filter(
-        tenant_district.c.tenant_id == tenant.id
+    db_name = session.get(
+        "tenant_db"
     )
-    .all()
-)
+
+    if not db_name:
+
+        flash(
+            "Tenant database not found",
+            "danger"
+        )
+
+        return redirect(
+            url_for("tenant.dashboard")
+        )
 
 
-    ##################################################
-    # Prepare template data
-    ##################################################
+    # ==========================================
+    # GET CURRENT TENANT
+    # ==========================================
 
-    results = {}
-
-
-    for district in districts:
-
-        votes = (
-    Vote.query
-    .join(Elector, Vote.elector_id == Elector.id)
-    .filter(
-        Elector.district_id == district.id
+    tenant_id = session.get(
+        "tenant_id"
     )
-    .all()
-)
 
 
-        rows = []
+    # ==========================================
+    # OPEN TENANT DATABASE
+    # ==========================================
 
-        for vote in votes:
+    tenant_session = get_tenant_session(
+        db_name
+    )
 
-            candidate = vote.candidate
-            elector = vote.elector
 
+    try:
 
-            rows.append({
+        # ==========================================
+        # GROUP VOTES
+        # ==========================================
 
-                "district": district.name,
+        vote_rows = (
 
-                "ballot_pen": (
-                    vote.ballot_pen.name
-                    if vote.ballot_pen
-                    else ""
-                ),
+            tenant_session.query(
 
-                "list_name": (
-                    candidate.candidate_list.name
-                    if candidate
-                    and candidate.candidate_list
-                    else ""
-                ),
+                Vote.ballot_pen_id,
 
-                "candidate_name": (
-                    candidate.name
-                    if candidate
-                    else ""
-                ),
+                Vote.district_id,
 
-                "candidate_id": (
-                    candidate.id
-                    if candidate
-                    else ""
+                Vote.subdistrict_id,
+
+                Vote.list_id,
+
+                Vote.candidate_id,
+
+                func.count(
+                    Vote.id
+                ).label(
+                    "votes"
                 )
+
+            )
+
+            .group_by(
+
+                Vote.ballot_pen_id,
+
+                Vote.district_id,
+
+                Vote.subdistrict_id,
+
+                Vote.list_id,
+
+                Vote.candidate_id
+
+            )
+
+            .all()
+
+        )
+
+
+        # ==========================================
+        # BUILD RESULTS
+        # ==========================================
+
+        results = []
+
+
+        for row in vote_rows:
+
+
+            # ======================================
+            # GET BALLOT PEN FROM MASTER DB
+            # ======================================
+
+            ballot_pen = db.session.get(
+                BallotPen,
+                row.ballot_pen_id
+            )
+
+
+            # ======================================
+            # DEFAULT VALUES
+            # ======================================
+
+            ballot_pen_code = ""
+
+            village_name = ""
+
+            polling_center_name = ""
+
+            room_name = ""
+
+
+            # ======================================
+            # BALLOT PEN INFORMATION
+            # ======================================
+
+            if ballot_pen:
+
+                # ----------------------------------
+                # BALLOT PEN CODE
+                # ----------------------------------
+
+                ballot_pen_code = (
+                    ballot_pen.code
+                    or ""
+                )
+
+
+                # ----------------------------------
+                # VILLAGE
+                # ----------------------------------
+
+                village_name = (
+                    ballot_pen.village
+                    or ""
+                )
+
+
+                # ----------------------------------
+                # POLLING CENTER
+                # ----------------------------------
+
+                if ballot_pen.polling_center:
+
+                    polling_center_name = (
+                        ballot_pen
+                        .polling_center
+                        .name
+                        or ""
+                    )
+
+
+                # ----------------------------------
+                # ROOM
+                # ----------------------------------
+
+                if ballot_pen.room:
+
+                    room_name = (
+                        ballot_pen
+                        .room
+                        .name
+                        or ""
+                    )
+
+
+            # ======================================
+            # GET LIST NAME
+            # ======================================
+
+            list_name = None
+
+
+            if row.list_id:
+
+                candidate_list = (
+
+                    tenant_session.query(
+                        CandidateList
+                    )
+
+                    .filter_by(
+                        id=row.list_id
+                    )
+
+                    .first()
+
+                )
+
+
+                if candidate_list:
+
+                    list_name = (
+                        candidate_list.name
+                    )
+
+
+            # ======================================
+            # GET CANDIDATE NAME
+            # ======================================
+
+            candidate_name = None
+
+
+            if row.candidate_id:
+
+                candidate = (
+
+                    tenant_session.query(
+                        Candidate
+                    )
+
+                    .filter_by(
+                        id=row.candidate_id
+                    )
+
+                    .first()
+
+                )
+
+
+                if candidate:
+
+                    candidate_name = (
+                        candidate.name
+                    )
+
+
+            # ======================================
+            # ADD RESULT
+            # ======================================
+
+            results.append({
+
+                # -------------------------------
+                # TENANT
+                # -------------------------------
+
+                "tenant_id":
+                    tenant_id,
+
+
+                # -------------------------------
+                # DISTRICT
+                # -------------------------------
+
+                "district_id":
+                    row.district_id,
+
+
+                # -------------------------------
+                # SUBDISTRICT
+                # -------------------------------
+
+                "subdistrict_id":
+                    row.subdistrict_id,
+
+
+                # -------------------------------
+                # VILLAGE
+                # IMPORTANT:
+                # template expects r.village
+                # -------------------------------
+
+                "village":
+                    village_name,
+
+
+                # -------------------------------
+                # POLLING CENTER
+                # -------------------------------
+
+                "polling_center_name":
+                    polling_center_name,
+
+
+                # -------------------------------
+                # ROOM
+                # -------------------------------
+
+                "room_name":
+                    room_name,
+
+
+                # -------------------------------
+                # BALLOT PEN CODE
+                # IMPORTANT:
+                # template expects r.ballot_pen_code
+                # -------------------------------
+
+                "ballot_pen_code":
+                    ballot_pen_code,
+
+
+                # -------------------------------
+                # LIST
+                # -------------------------------
+
+                "list_name":
+                    list_name,
+
+
+                # -------------------------------
+                # CANDIDATE
+                # -------------------------------
+
+                "candidate_name":
+                    candidate_name,
+
+
+                # -------------------------------
+                # VOTES
+                # -------------------------------
+
+                "votes":
+                    row.votes
+
             })
 
 
-        results[district.id] = rows
+        # ==========================================
+        # TOTAL VALID/BLANK VOTES
+        # ==========================================
+
+        vote_count = (
+
+            tenant_session.query(
+                Vote
+            )
+
+            .count()
+
+        )
 
 
-    ##################################################
-    # Render page
-    ##################################################
+        # ==========================================
+        # RENDER
+        # ==========================================
 
-    return render_template(
-        "tenant/results.html",
-        results=results
-    )
+        return render_template(
+
+            "tenant/results.html",
+
+            results=results,
+
+            vote_count=vote_count
+
+        )
+
+
+    finally:
+
+        tenant_session.close()
 # ==========================================================
 # VIEW ELECTORS
 # ==========================================================
@@ -1838,106 +2145,738 @@ def view_electors():
             type=int
         )
     )
-@tenant_bp.route("/results/download")
-def download_all_results():
+# ==========================================================
+# VIEW SUBMITTED ELECTORS
+# ==========================================================
+
+# ==========================================================
+# VIEW SUBMITTED ELECTORS
+# ==========================================================
+
+@tenant_bp.route("/view-submitted-electors")
+def view_submitted_electors():
+
+    # ============================================
+    # CHECK TENANT LOGIN
+    # ============================================
+
+    tenant_id = session.get("tenant_id")
+    db_name = session.get("tenant_db")
+
+    if not tenant_id or not db_name:
+
+        flash(
+            "يرجى تسجيل الدخول أولاً.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+    # ============================================
+    # GET TENANT
+    # ============================================
+
+    tenant = Tenant.query.get(tenant_id)
+
+    if tenant is None:
+
+        flash(
+            "لم يتم العثور على الزبون.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("auth.login")
+        )
+
+    # ============================================
+    # OPEN TENANT DATABASE
+    # ============================================
+
+    tenant_session = get_tenant_session(db_name)
+
+    try:
+
+        # ========================================
+        # GET SUBMITTED ELECTORS
+        # ========================================
+
+        submissions = (
+            tenant_session
+            .query(ElectorSubmission)
+            .filter(
+                ElectorSubmission.submitted_at.isnot(None)
+            )
+            .order_by(
+                ElectorSubmission.submitted_at.desc()
+            )
+            .all()
+        )
+
+        # ========================================
+        # GET BALLOT PEN IDs
+        # ========================================
+
+        ballot_pen_ids = {
+            submission.ballot_pen_id
+            for submission in submissions
+            if submission.ballot_pen_id is not None
+        }
+
+        # ========================================
+        # GET BALLOT PENS FROM MASTER DATABASE
+        # ========================================
+
+        ballot_pens = {}
+
+        if ballot_pen_ids:
+
+            pens = (
+                BallotPen.query
+                .filter(
+                    BallotPen.id.in_(ballot_pen_ids)
+                )
+                .all()
+            )
+
+            ballot_pens = {
+                pen.id: pen
+                for pen in pens
+            }
+
+        # ========================================
+        # GROUP BY DISTRICT
+        # ========================================
+
+        electors = {}
+
+        for submission in submissions:
+
+            district_id = submission.district_id
+
+            if district_id not in electors:
+                electors[district_id] = []
+
+            electors[district_id].append(
+                submission
+            )
+
+        # ========================================
+        # DISPLAY
+        # ========================================
+
+        return render_template(
+            "tenant/electors.html",
+            electors=electors,
+            tenant=tenant,
+            ballot_pens=ballot_pens
+        )
+
+    finally:
+
+        tenant_session.close()
+# ==========================================================
+# DOWNLOAD ELECTORS CSV
+# ==========================================================
+
+@tenant_bp.route(
+    "/electors/download/<int:district_id>"
+)
+def download_electors(district_id):
+
+    # ======================================================
+    # GET CURRENT TENANT
+    # ======================================================
 
     tenant = get_current_tenant()
 
     if tenant is None:
-        return redirect(url_for("auth.login"))
 
-    ##################################################
-    # Get tenant districts
-    ##################################################
-
-    districts = District.query.filter_by(
-        tenant_id=tenant.id
-    ).all()
-
-    if not districts:
-        return Response(
-            "No districts found for this tenant.",
-            mimetype="text/plain"
+        return redirect(
+            url_for("auth.login")
         )
 
+    # ======================================================
+    # SECURITY CHECK
+    # ======================================================
 
-    district_ids = [
-        d.id for d in districts
-    ]
+    if not tenant_has_district(
+        tenant,
+        district_id
+    ):
 
+        abort(403)
 
-    ##################################################
-    # Get all votes for tenant districts
-    ##################################################
+    # ======================================================
+    # GET TENANT DATABASE
+    # ======================================================
 
-    votes = (
-        Vote.query
-        .join(Elector)
-        .filter(
-            Elector.district_id.in_(district_ids)
-        )
-        .all()
+    db_name = session.get(
+        "tenant_db"
     )
 
+    if not db_name:
 
-    ##################################################
-    # Build CSV
-    ##################################################
+        flash(
+            "لم يتم العثور على قاعدة بيانات الزبون.",
+            "danger"
+        )
 
-    output = StringIO()
+        return redirect(
+            url_for("tenant.dashboard")
+        )
 
-    writer = csv.writer(output)
+    # ======================================================
+    # OPEN TENANT DATABASE SESSION
+    # ======================================================
 
-    writer.writerow([
-        "District",
-        "Ballot Pen",
-        "List Name",
-        "Candidate Name",
-        "Candidate ID"
-    ])
+    tenant_session = get_tenant_session(
+        db_name
+    )
 
+    try:
 
-    for vote in votes:
+        # ==================================================
+        # GET ELECTOR SUBMISSIONS
+        # IMPORTANT:
+        # This queries ElectorSubmission, NOT Elector
+        # ==================================================
 
-        elector = vote.elector
-        candidate = vote.candidate
+        submissions = (
 
+            tenant_session.query(
+                ElectorSubmission
+            )
+
+            .filter(
+                ElectorSubmission.district_id
+                == district_id
+            )
+
+            .filter(
+                ElectorSubmission.submitted_at.isnot(None)
+            )
+
+            .order_by(
+                ElectorSubmission.submitted_at.desc()
+            )
+
+            .all()
+        )
+
+        # ==================================================
+        # CREATE CSV
+        # ==================================================
+
+        output = StringIO()
+
+        writer = csv.writer(
+            output
+        )
+
+        # ==================================================
+        # CSV HEADERS
+        # ==================================================
 
         writer.writerow([
-            elector.district.name
-                if elector.district else "",
 
-            vote.ballot_pen.name
-                if vote.ballot_pen else "",
+            "Tenant ID",
 
-            candidate.candidate_list.name
-                if candidate and candidate.candidate_list
-                else "",
+            "District ID",
 
-            candidate.name
-                if candidate
-                else "",
+            "Ballot Pen Code",
 
-            candidate.id
-                if candidate
-                else ""
+            "Elector ID",
+
+            "Elector Submission Time"
+
         ])
 
+        # ==================================================
+        # WRITE SUBMISSIONS
+        # ==================================================
 
-    ##################################################
-    # Return download
-    ##################################################
+        for submission in submissions:
+
+            # ----------------------------------------------
+            # DEFAULT BALLOT PEN CODE
+            # ----------------------------------------------
+
+            ballot_pen_code = ""
+
+            # ----------------------------------------------
+            # GET BALLOT PEN FROM MASTER DATABASE
+            # ----------------------------------------------
+
+            if submission.ballot_pen_id is not None:
+
+                ballot_pen = db.session.get(
+
+                    BallotPen,
+
+                    submission.ballot_pen_id
+
+                )
+
+                if ballot_pen is not None:
+
+                    ballot_pen_code = ballot_pen.code
+
+            # ----------------------------------------------
+            # WRITE CSV ROW
+            # ----------------------------------------------
+
+            writer.writerow([
+
+    # Tenant ID
+    tenant.id,
+
+    # District ID
+    submission.district_id,
+
+    # Ballot Pen Code
+    ballot_pen_code,
+
+    # Elector ID
+    submission.elector_code,
+
+    # Submission Time
+    submission.submitted_at.strftime(
+        "%Y-%m-%d %H:%M"
+    )
+    if submission.submitted_at
+    else ""
+
+])
+
+    finally:
+
+        # ==================================================
+        # CLOSE TENANT DATABASE SESSION
+        # ==================================================
+
+        tenant_session.close()
+
+    # ======================================================
+    # RETURN CSV FILE
+    # ======================================================
+
+    output.seek(0)
+
+    filename = (
+        f"submitted_electors_district_"
+        f"{district_id}.csv"
+    )
+
+    response = make_response(
+        output.getvalue()
+    )
+
+    response.headers[
+        "Content-Disposition"
+    ] = (
+        f"attachment; filename={filename}"
+    )
+
+    response.headers[
+        "Content-Type"
+    ] = (
+        "text/csv; charset=utf-8"
+    )
+
+    return response
+
+    # ======================================================
+    # RESPONSE
+    # ======================================================
 
     response = Response(
         output.getvalue(),
         mimetype="text/csv"
     )
 
-    response.headers["Content-Disposition"] = (
-        "attachment; filename=tenant_results.csv"
+    response.headers[
+        "Content-Disposition"
+    ] = (
+        "attachment; "
+        f"filename=electors_district_{district_id}.csv"
     )
 
     return response
+@tenant_bp.route("/results/download")
+def download_all_results():
+
+    # ==================================================
+    # CHECK LOGGED-IN TENANT
+    # ==================================================
+
+    tenant = get_current_tenant()
+
+    if tenant is None:
+        return redirect(
+            url_for("auth.login")
+        )
+
+
+    # ==================================================
+    # GET TENANT DATABASE
+    # ==================================================
+
+    db_name = session.get(
+        "tenant_db"
+    )
+
+    if not db_name:
+        return Response(
+            "Tenant database not found.",
+            mimetype="text/plain",
+            status=400
+        )
+
+
+    # ==================================================
+    # OPEN TENANT DATABASE SESSION
+    # ==================================================
+
+    tenant_session = get_tenant_session(
+        db_name
+    )
+
+
+    try:
+
+        # ==================================================
+        # GROUP VOTES
+        #
+        # BLANK:
+        #   list_id      = NULL
+        #   candidate_id = NULL
+        #
+        # LIST ONLY:
+        #   list_id      = ID
+        #   candidate_id = NULL
+        #
+        # LIST + CANDIDATE:
+        #   list_id      = ID
+        #   candidate_id = ID
+        #
+        # CANCELED PAPERS:
+        #   Stored in CanceledPaper
+        #   Therefore NOT included here.
+        # ==================================================
+
+        vote_rows = (
+
+            tenant_session
+
+            .query(
+
+                Vote.ballot_pen_id.label(
+                    "ballot_pen_id"
+                ),
+
+                Vote.list_id.label(
+                    "list_id"
+                ),
+
+                Vote.candidate_id.label(
+                    "candidate_id"
+                ),
+
+                func.count(
+                    Vote.id
+                ).label(
+                    "vote_count"
+                )
+
+            )
+
+            .group_by(
+
+                Vote.ballot_pen_id,
+
+                Vote.list_id,
+
+                Vote.candidate_id
+
+            )
+
+            .all()
+        )
+
+
+        # ==================================================
+        # CREATE CSV
+        # ==================================================
+
+        output = StringIO()
+
+        writer = csv.writer(
+            output
+        )
+
+
+        # ==================================================
+        # CSV HEADER
+        # ==================================================
+
+        writer.writerow([
+
+            "Tenant ID",
+
+            "District ID",
+
+            "Ballot Pen Code",
+
+            "List Name",
+
+            "Candidate Name",
+
+            "Number of Votes"
+
+        ])
+
+
+        # ==================================================
+        # BUILD CSV
+        # ==================================================
+
+        for row in vote_rows:
+
+
+            # ==============================================
+            # GET BALLOT PEN FROM MASTER DATABASE
+            # ==============================================
+
+            ballot_pen = db.session.get(
+                BallotPen,
+                row.ballot_pen_id
+            )
+
+
+            if not ballot_pen:
+                continue
+
+
+            # ==================================================
+            # DEFAULT
+            #
+            # IMPORTANT:
+            #
+            # Start with the literal STRING "None".
+            #
+            # This guarantees that "None" is written into
+            # the CSV instead of leaving the cell empty.
+            # ==================================================
+
+            list_name = "None"
+
+            candidate_name = "None"
+
+
+            # ==================================================
+            # BLANK VOTE
+            #
+            # list_id      = None
+            # candidate_id = None
+            #
+            # CSV:
+            #
+            # List Name      = None
+            # Candidate Name = None
+            # ==================================================
+
+            if (
+                row.list_id is None
+                and
+                row.candidate_id is None
+            ):
+
+                list_name = "None"
+
+                candidate_name = "None"
+
+
+            # ==================================================
+            # LIST ONLY
+            #
+            # list_id      = ID
+            # candidate_id = None
+            #
+            # CSV:
+            #
+            # List Name      = actual list name
+            # Candidate Name = None
+            # ==================================================
+
+            elif (
+                row.list_id is not None
+                and
+                row.candidate_id is None
+            ):
+
+                candidate_list = (
+
+                    tenant_session
+
+                    .query(
+                        CandidateList
+                    )
+
+                    .filter_by(
+                        id=row.list_id
+                    )
+
+                    .first()
+                )
+
+
+                if candidate_list:
+
+                    list_name = (
+                        candidate_list.name
+                    )
+
+                else:
+
+                    list_name = "None"
+
+
+                candidate_name = "None"
+
+
+            # ==================================================
+            # LIST + CANDIDATE
+            #
+            # list_id      = ID
+            # candidate_id = ID
+            #
+            # CSV:
+            #
+            # List Name      = actual list name
+            # Candidate Name = actual candidate name
+            # ==================================================
+
+            elif (
+                row.list_id is not None
+                and
+                row.candidate_id is not None
+            ):
+
+                # ----------------------------------------------
+                # GET LIST
+                # ----------------------------------------------
+
+                candidate_list = (
+
+                    tenant_session
+
+                    .query(
+                        CandidateList
+                    )
+
+                    .filter_by(
+                        id=row.list_id
+                    )
+
+                    .first()
+                )
+
+
+                if candidate_list:
+
+                    list_name = (
+                        candidate_list.name
+                    )
+
+                else:
+
+                    list_name = "None"
+
+
+                # ----------------------------------------------
+                # GET CANDIDATE
+                # ----------------------------------------------
+
+                candidate = (
+
+                    tenant_session
+
+                    .query(
+                        Candidate
+                    )
+
+                    .filter_by(
+                        id=row.candidate_id
+                    )
+
+                    .first()
+                )
+
+
+                if candidate:
+
+                    candidate_name = (
+                        candidate.name
+                    )
+
+                else:
+
+                    candidate_name = "None"
+
+
+            # ==================================================
+            # WRITE CSV ROW
+            # ==================================================
+
+            writer.writerow([
+
+                tenant.id,
+
+                ballot_pen.district_id,
+
+                ballot_pen.code,
+
+                list_name,
+
+                candidate_name,
+
+                row.vote_count
+
+            ])
+
+
+        # ==================================================
+        # RETURN CSV
+        # ==================================================
+
+        response = Response(
+
+            output.getvalue(),
+
+            mimetype="text/csv"
+
+        )
+
+
+        response.headers[
+            "Content-Disposition"
+        ] = (
+
+            "attachment; "
+            "filename=tenant_results.csv"
+
+        )
+
+
+        return response
+
+
+    finally:
+
+        tenant_session.close()
 @tenant_bp.route(
     "/ballot-pens/<int:ballot_pen_id>/credentials/edit",
     methods=["GET", "POST"]
@@ -2117,20 +3056,16 @@ def add_candidate_ajax():
     if session.get("role") != "tenant":
         abort(403)
 
-
     tenant = get_current_tenant()
 
     if tenant is None:
         abort(403)
 
-
     tenant_session = get_tenant_session(
         tenant.db_name
     )
 
-
     try:
-
         # -----------------------------
         # Read form data
         # -----------------------------
@@ -2141,21 +3076,24 @@ def add_candidate_ajax():
         )
 
         subdistrict_id = request.form.get(
-    "subdistrict_id",
-    type=int
-)
+            "subdistrict_id",
+            type=int
+        )
+
         name = request.form.get(
             "name",
             ""
         ).strip()
-
 
         sect_id = request.form.get(
             "sect_id",
             type=int
         )
 
-
+        political_allegiance_id = request.form.get(
+            "political_allegiance_id",
+            type=int
+        )
 
         # -----------------------------
         # Validate list
@@ -2171,20 +3109,20 @@ def add_candidate_ajax():
             .first()
         )
 
-
         if candidate_list is None:
             abort(404)
-
-
 
         # -----------------------------
         # Validate input
         # -----------------------------
 
-        if not name or not sect_id:
-
+        if (
+            not name
+            or not sect_id
+            or not political_allegiance_id
+        ):
             flash(
-                "اسم المرشح والطائفة مطلوبان",
+                "اسم المرشح والطائفة والانتماء السياسي مطلوبان",
                 "danger"
             )
 
@@ -2193,8 +3131,6 @@ def add_candidate_ajax():
                     "tenant.manage_lists"
                 )
             )
-
-
 
         # -----------------------------
         # Validate sect seat
@@ -2205,16 +3141,13 @@ def add_candidate_ajax():
                 SubdistrictSectSeat
             )
             .filter_by(
-                subdistrict_id=
-                    subdistrict_id,
+                subdistrict_id=subdistrict_id,
                 sect_id=sect_id
             )
             .first()
         )
 
-
         if seat_rule is None:
-
             flash(
                 "هذه الطائفة غير متاحة لهذا القضاء",
                 "danger"
@@ -2226,7 +3159,28 @@ def add_candidate_ajax():
                 )
             )
 
+        allegiance = (
+            tenant_session.query(
+                PoliticalAllegiance
+            )
+            .filter_by(
+                id=political_allegiance_id,
+                district_id=candidate_list.district_id
+            )
+            .first()
+        )
 
+        if allegiance is None:
+            flash(
+                "الانتماء السياسي غير صالح لهذه الدائرة",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_lists"
+                )
+            )
 
         # -----------------------------
         # Check seat limit
@@ -2243,9 +3197,7 @@ def add_candidate_ajax():
             .count()
         )
 
-
         if count >= seat_rule.seats:
-
             flash(
                 "تم الوصول إلى العدد الأقصى للمقاعد لهذه الطائفة",
                 "danger"
@@ -2257,39 +3209,26 @@ def add_candidate_ajax():
                 )
             )
 
-
-
         # -----------------------------
         # Create candidate
         # -----------------------------
 
         candidate = Candidate(
-
             name=name,
-
             candidate_list_id=list_id,
-
-            district_id=
-                candidate_list.district_id,
-
-            subdistrict_id=
-                subdistrict_id,
-
-            sect_id=sect_id
+            district_id=candidate_list.district_id,
+            subdistrict_id=subdistrict_id,
+            sect_id=sect_id,
+            political_allegiance_id=political_allegiance_id
         )
 
-
         tenant_session.add(candidate)
-
         tenant_session.commit()
-
-
 
         flash(
             "تمت إضافة المرشح بنجاح",
             "success"
         )
-
 
         return redirect(
             url_for(
@@ -2297,9 +3236,7 @@ def add_candidate_ajax():
             )
         )
 
-
     except Exception as e:
-
         tenant_session.rollback()
 
         print(
@@ -2309,10 +3246,10 @@ def add_candidate_ajax():
 
         raise
 
-
     finally:
-
         tenant_session.close()
+
+
 @tenant_bp.route(
     "/candidate-subdistricts/<int:list_id>"
 )
@@ -2408,26 +3345,52 @@ def list_subdistricts(list_id):
 )
 def subdistrict_sects(subdistrict_id):
 
-    sects = (
-        db.session.query(Sect)
-        .join(
-            SubdistrictSectSeat,
-            Sect.id == SubdistrictSectSeat.sect_id
-        )
-        .filter(
-            SubdistrictSectSeat.subdistrict_id == subdistrict_id
-        )
-        .all()
-    )
+    try:
 
+        sects = (
+            db.session.query(Sect)
+            .join(
+                SubdistrictSectSeat,
+                Sect.id == SubdistrictSectSeat.sect_id
+            )
+            .filter(
+                SubdistrictSectSeat.subdistrict_id == subdistrict_id
+            )
+            .order_by(
+                Sect.name
+            )
+            .all()
+        )
 
-    return jsonify([
-        {
-            "id": s.id,
-            "name": s.name
-        }
-        for s in sects
-    ])
+        print(
+            "SUBDISTRICT ID:",
+            subdistrict_id
+        )
+
+        print(
+            "SECTS FOUND:",
+            [
+                (s.id, s.name)
+                for s in sects
+            ]
+        )
+
+        return jsonify([
+            {
+                "id": s.id,
+                "name": s.name
+            }
+            for s in sects
+        ])
+
+    except Exception as e:
+
+        print(
+            "SUBDISTRICT SECTS ERROR:",
+            repr(e)
+        )
+
+        raise
 @tenant_bp.route(
     "/update-list",
     methods=["POST"]
@@ -2759,3 +3722,467 @@ def update_candidate():
     finally:
 
         tenant_session.close()
+@tenant_bp.route(
+    "/manage-allegiances"
+)
+def manage_allegiances():
+
+    if not is_tenant_logged_in():
+        return redirect(
+            url_for("tenant_bp.login")
+        )
+
+
+    db_name = session.get(
+        "tenant_db"
+    )
+
+
+    if not db_name:
+
+        flash(
+            "Tenant database not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("tenant_bp.login")
+        )
+
+
+    tenant_session = get_tenant_session(
+        db_name
+    )
+
+
+    try:
+
+        tenant = (
+            db.session.query(Tenant)
+            .filter_by(
+                db_name=db_name
+            )
+            .first()
+        )
+
+
+        if not tenant:
+
+            flash(
+                "Tenant not found.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("tenant_bp.login")
+            )
+
+
+        districts = (
+            tenant.districts
+        )
+
+
+        district_ids = [
+            district.id
+            for district in districts
+        ]
+
+
+        allegiances = (
+            tenant_session
+            .query(PoliticalAllegiance)
+            .filter(
+                PoliticalAllegiance.district_id.in_(
+                    district_ids
+                )
+            )
+            .order_by(
+                PoliticalAllegiance.district_id,
+                PoliticalAllegiance.name
+            )
+            .all()
+        )
+
+
+        district_map = {
+
+            district.id: district.name
+
+            for district in districts
+
+        }
+
+
+        return render_template(
+
+            "tenant/manage_allegiances.html",
+
+            allegiances=allegiances,
+
+            districts=districts,
+
+            district_map=district_map
+
+        )
+
+
+    finally:
+
+        tenant_session.close()
+@tenant_bp.route(
+    "/create-allegiance",
+    methods=["POST"]
+)
+def create_allegiance():
+
+    if not is_tenant_logged_in():
+        return redirect(
+            url_for("tenant_bp.login")
+        )
+
+
+    db_name = session.get(
+        "tenant_db"
+    )
+
+
+    if not db_name:
+
+        flash(
+            "Tenant database not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("tenant_bp.login")
+        )
+
+
+    name = request.form.get(
+        "name",
+        ""
+    ).strip()
+
+
+    district_id = request.form.get(
+        "district_id",
+        type=int
+    )
+
+
+    if not name:
+
+        flash(
+            "يرجى إدخال اسم الانتماء السياسي.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "tenant_bp.manage_allegiances"
+            )
+        )
+
+
+    if not district_id:
+
+        flash(
+            "يرجى اختيار الدائرة.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "tenant_bp.manage_allegiances"
+            )
+        )
+
+
+    # -----------------------------------------
+    # Verify that this district belongs
+    # to the logged-in tenant
+    # -----------------------------------------
+
+    tenant = (
+        db.session.query(Tenant)
+        .filter_by(
+            db_name=db_name
+        )
+        .first()
+    )
+
+
+    allowed_district_ids = [
+
+        district.id
+
+        for district in tenant.districts
+
+    ]
+
+
+    if district_id not in allowed_district_ids:
+
+        flash(
+            "هذه الدائرة غير مسموح بها لهذا المستخدم.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "tenant.manage_allegiances"
+            )
+        )
+
+
+    tenant_session = get_tenant_session(
+        db_name
+    )
+
+
+    try:
+
+        existing = (
+
+            tenant_session
+            .query(PoliticalAllegiance)
+            .filter_by(
+                district_id=district_id,
+                name=name
+            )
+            .first()
+
+        )
+
+
+        if existing:
+
+            flash(
+                "هذا الانتماء السياسي موجود مسبقاً في هذه الدائرة.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant_bp.manage_allegiances"
+                )
+            )
+
+
+        allegiance = PoliticalAllegiance(
+
+            district_id=district_id,
+
+            name=name
+
+        )
+
+
+        tenant_session.add(
+            allegiance
+        )
+
+
+        tenant_session.commit()
+
+
+        flash(
+            "تم إنشاء الانتماء السياسي بنجاح.",
+            "success"
+        )
+
+
+    except Exception as error:
+
+        tenant_session.rollback()
+
+        print(
+            "CREATE ALLEGIANCE ERROR:",
+            repr(error)
+        )
+
+
+        flash(
+            "حدث خطأ أثناء إنشاء الانتماء السياسي.",
+            "danger"
+        )
+
+
+    finally:
+
+        tenant_session.close()
+
+
+    return redirect(
+        url_for(
+            "tenant.manage_allegiances"
+        )
+    )
+@tenant_bp.route(
+    "/delete-allegiance/<int:allegiance_id>",
+    methods=["POST"]
+)
+def delete_allegiance(
+    allegiance_id
+):
+
+    if not is_tenant_logged_in():
+        return redirect(
+            url_for("tenant_bp.login")
+        )
+
+
+    db_name = session.get(
+        "tenant_db"
+    )
+
+
+    if not db_name:
+
+        return redirect(
+            url_for("tenant_bp.login")
+        )
+
+
+    tenant_session = get_tenant_session(
+        db_name
+    )
+
+
+    try:
+
+        allegiance = (
+
+            tenant_session
+            .query(PoliticalAllegiance)
+            .filter_by(
+                id=allegiance_id
+            )
+            .first()
+
+        )
+
+
+        if not allegiance:
+
+            flash(
+                "الانتماء السياسي غير موجود.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant_bp.manage_allegiances"
+                )
+            )
+
+
+        # ---------------------------------
+        # Security check:
+        # Ensure this allegiance belongs
+        # to one of the tenant's districts
+        # ---------------------------------
+
+        tenant = (
+            db.session.query(Tenant)
+            .filter_by(
+                db_name=db_name
+            )
+            .first()
+        )
+
+
+        allowed_district_ids = [
+
+            district.id
+
+            for district in tenant.districts
+
+        ]
+
+
+        if allegiance.district_id not in allowed_district_ids:
+
+            flash(
+                "غير مسموح بحذف هذا الانتماء.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_allegiances"
+                )
+            )
+
+
+        # ---------------------------------
+        # Check candidates
+        # ---------------------------------
+
+        candidate_count = (
+
+            tenant_session
+            .query(Candidate)
+            .filter_by(
+                political_allegiance_id=allegiance.id
+            )
+            .count()
+
+        )
+
+
+        if candidate_count > 0:
+
+            flash(
+                "لا يمكن حذف هذا الانتماء لأنه مرتبط بمرشحين.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "tenant.manage_allegiances"
+                )
+            )
+
+
+        tenant_session.delete(
+            allegiance
+        )
+
+
+        tenant_session.commit()
+
+
+        flash(
+            "تم حذف الانتماء السياسي بنجاح.",
+            "success"
+        )
+
+
+    except Exception as error:
+
+        tenant_session.rollback()
+
+        print(
+            "DELETE ALLEGIANCE ERROR:",
+            repr(error)
+        )
+
+
+        flash(
+            "حدث خطأ أثناء حذف الانتماء السياسي.",
+            "danger"
+        )
+
+
+    finally:
+
+        tenant_session.close()
+
+
+    return redirect(
+        url_for(
+            "tenant.manage_allegiances"
+        )
+    )

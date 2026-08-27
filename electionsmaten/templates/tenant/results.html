@@ -1,39 +1,486 @@
- <a href="{{ url_for('tenant.dashboard') }}">
-        <button>⬅ Back to Dashboard</button>
-    </a>
+<!DOCTYPE html>
 
-    <!-- Download CSV (per district) -->
-   <a href="{{ url_for('tenant.download_all_results') }}">
-    <button>⬇ Download All Results CSV</button>
-</a>
-<table border="1" cellpadding="5" cellspacing="0">
-    <thead>
-        <tr>
-            <th>Tenant</th>
-            <th>District</th>
-            <th>Ballot Pen</th>
-            <th>List</th>
-            <th>Candidate</th>
-            <th>Votes</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for district_id, rows in results.items() %}
-            <tr>
-                <td colspan="6" style="background-color: #eee; font-weight: bold;">
-                    District {{ district_id }}
-                </td>
-            </tr>
-            {% for r in rows %}
-            <tr>
-                <td>{{ r.tenant_id }}</td>
-                <td>{{ r.district_id }}</td>
-                <td>{{ r.ballot_pen }}</td>
-                <td>{{ r.list_name or "None" }}</td>
-                <td>{{ r.candidate_name or "None" }}</td>
-                <td>{{ r.votes }}</td>
-            </tr>
-            {% endfor %}
-        {% endfor %}
-    </tbody>
-</table>
+<html lang="ar" dir="rtl">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>نتائج الانتخابات - لوحة التحكم</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <style>
+
+        body {
+
+            direction: rtl;
+            background: #f4f6f8;
+            margin: 0;
+            font-family: Arial, sans-serif;
+
+        }
+
+
+        /* ================= HEADER ================= */
+
+        .page-header {
+
+            background: #0F5C6E;
+            color: white;
+            text-align: center;
+            padding: 20px;
+
+        }
+
+
+        .page-header h1 {
+
+            margin: 0;
+            font-size: 42px;
+
+        }
+
+
+        /* ================= MAIN CARD ================= */
+
+        .page-container {
+
+            width: 95%;
+            max-width: 1900px;
+            margin: 35px auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, .12);
+            padding: 30px;
+            overflow-x: auto;
+
+        }
+
+
+        /* ================= TOP BAR ================= */
+
+        .top-actions {
+
+            display: flex;
+            justify-content: flex-start;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+
+        }
+
+
+        /* ================= BUTTONS ================= */
+
+        .btn {
+
+            background: #0F5C6E;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
+
+        }
+
+
+        .btn:hover {
+
+            background: #09424f;
+
+        }
+
+
+        .btn-secondary {
+
+            background: #555;
+
+        }
+
+
+        .btn-secondary:hover {
+
+            background: #333;
+
+        }
+
+
+        /* ================= TABLE ================= */
+
+        .results-table {
+
+            width: 100%;
+            min-width: 1650px;
+            border-collapse: collapse;
+            background: white;
+            margin-top: 10px;
+
+        }
+
+
+        .results-table th {
+
+            background: #0F5C6E;
+            color: white;
+            padding: 12px;
+            font-size: 17px;
+            text-align: center;
+            white-space: nowrap;
+
+        }
+
+
+        .results-table td {
+
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+            font-size: 16px;
+
+        }
+
+
+        .results-table tbody tr:hover {
+
+            background: #f1f7f8;
+
+        }
+
+
+        /* ================= VOTE COUNT ================= */
+
+        .vote-number {
+
+            font-size: 19px;
+            color: #0F5C6E;
+
+        }
+
+
+        /* ================= EMPTY RESULTS ================= */
+
+        .empty-row td {
+
+            padding: 30px;
+            font-size: 20px;
+            color: #777;
+
+        }
+
+
+        /* ================= FLASH ================= */
+
+        .flash-message {
+
+            background: #dff0d8;
+            color: #3c763d;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="page-header">
+
+        <h1>
+
+            نتائج الانتخابات النيابية 2028
+
+        </h1>
+
+    </div>
+
+
+    <!-- ================= MAIN CONTAINER ================= -->
+
+    <div class="page-container">
+
+
+        <!-- ================= TOP ACTIONS ================= -->
+
+        <div class="top-actions">
+
+            <a
+                href="{{ url_for('tenant.dashboard') }}"
+                class="btn btn-secondary"
+            >
+
+                ⬅ العودة إلى لوحة التحكم
+
+            </a>
+
+
+            <a
+                href="{{ url_for('tenant.download_all_results') }}"
+                class="btn"
+            >
+
+                ⬇ تحميل النتائج CSV
+
+            </a>
+
+        </div>
+
+
+        <!-- ================= FLASH MESSAGES ================= -->
+
+        {% with messages = get_flashed_messages(
+            with_categories=true
+        ) %}
+
+            {% if messages %}
+
+                {% for category, message in messages %}
+
+                    <div class="flash-message">
+
+                        {{ message }}
+
+                    </div>
+
+                {% endfor %}
+
+            {% endif %}
+
+        {% endwith %}
+
+
+        <!-- ================= RESULTS TABLE ================= -->
+
+        <table class="results-table">
+
+            <thead>
+
+                <tr>
+
+                    <!-- 1 -->
+
+                    <th>
+                        رقم المستأجر
+                    </th>
+
+
+                    <!-- 2 -->
+
+                    <th>
+                        رقم الدائرة
+                    </th>
+
+
+                    <!-- 3 -->
+
+                    <th>
+                        رقم القضاء
+                    </th>
+
+
+                    <!-- 4 -->
+
+                    <th>
+                        البلدة
+                    </th>
+
+
+                    <!-- 5 -->
+
+                    <th>
+                        مركز الاقتراع
+                    </th>
+
+
+                    <!-- 6 -->
+
+                    <th>
+                        الغرفة
+                    </th>
+
+
+                    <!-- 7 -->
+
+                    <th>
+                        رمز القلم
+                    </th>
+
+
+                    <!-- 8 -->
+
+                    <th>
+                        اللائحة
+                    </th>
+
+
+                    <!-- 9 -->
+
+                    <th>
+                        المرشح
+                    </th>
+
+
+                    <!-- 10 -->
+
+                    <th>
+                        عدد الأصوات
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+
+                <!-- ================= RESULTS ================= -->
+
+                {% if results %}
+
+                    {% for r in results %}
+
+                        <tr>
+
+
+                            <!-- TENANT -->
+
+                            <td>
+
+                                {{ r.tenant_id }}
+
+                            </td>
+
+
+                            <!-- DISTRICT -->
+
+                            <td>
+
+                                {{ r.district_id }}
+
+                            </td>
+
+
+                            <!-- SUBDISTRICT -->
+
+                            <td>
+
+                                {{ r.subdistrict_id }}
+
+                            </td>
+
+
+                            <!-- VILLAGE -->
+
+                            <td>
+
+                                {{ r.village or "-" }}
+
+                            </td>
+
+
+                            <!-- POLLING CENTER -->
+
+                            <td>
+
+                                {{ r.polling_center_name or "-" }}
+
+                            </td>
+
+
+                            <!-- ROOM -->
+
+                            <td>
+
+                                {{ r.room_name or "-" }}
+
+                            </td>
+
+
+                            <!-- BALLOT PEN CODE -->
+
+                            <td>
+
+                                {{ r.ballot_pen_code or "-" }}
+
+                            </td>
+
+
+                            <!-- LIST -->
+
+                            <td>
+
+                                {{ r.list_name or "بدون لائحة" }}
+
+                            </td>
+
+
+                            <!-- CANDIDATE -->
+
+                            <td>
+
+                                {{ r.candidate_name or "بدون مرشح" }}
+
+                            </td>
+
+
+                            <!-- NUMBER OF VOTES -->
+
+                            <td class="vote-number">
+
+                                <strong>
+
+                                    {{ r.votes }}
+
+                                </strong>
+
+                            </td>
+
+
+                        </tr>
+
+                    {% endfor %}
+
+
+                <!-- ================= NO RESULTS ================= -->
+
+                {% else %}
+
+                    <tr class="empty-row">
+
+                        <td colspan="10">
+
+                            لا توجد نتائج مسجلة حتى الآن
+
+                        </td>
+
+                    </tr>
+
+                {% endif %}
+
+
+            </tbody>
+
+        </table>
+
+
+    </div>
+
+
+</body>
+
+</html>

@@ -2,53 +2,397 @@
 
 {% block content %}
 
-<div class="page-header">
-    <h1>الناخبون الموجودون في هذا القلم</h1>
-</div>
+<style>
 
-<div class="page-container">
+body{
+    direction:rtl;
+    background:#f4f6f8;
+    margin:0;
+    font-family:Arial,sans-serif;
+}
 
-<table class="table">
 
-    <thead>
-        <tr>
-            <th>رقم الناخب</th>
-            <th>الاسم</th>
-            <th>العائلة</th>
-            <th>رقم القلم</th>
-            <th>تم الإدخال</th>
-        </tr>
-    </thead>
+/* ================= MAIN CONTAINER ================= */
 
-    <tbody>
+.electors-container{
 
-    {% for elector in electors %}
+    width:95%;
 
-    <tr>
+    max-width:1700px;
 
-        <td>{{ elector.elector_id }}</td>
+    margin:35px auto;
 
-        <td>{{ elector.first_name }}</td>
+    background:white;
 
-        <td>{{ elector.family_name }}</td>
+    border-radius:12px;
 
-        <td>{{ elector.ballot_number }}</td>
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
 
-        <td>
-            {% if elector.submission %}
-                نعم
+    padding:30px;
+
+}
+
+
+/* ================= HEADER ================= */
+
+.arabic-header{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    text-align:center;
+
+    padding:20px;
+
+    font-size:38px;
+
+    font-weight:bold;
+
+    border-radius:8px;
+
+}
+
+
+/* ================= TOP BAR ================= */
+
+.page-header{
+
+    display:flex;
+
+    justify-content:flex-start;
+
+    margin-top:25px;
+
+    margin-bottom:25px;
+
+}
+
+
+.logout-button{
+
+    background:#c0392b;
+
+    color:white;
+
+    padding:12px 25px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:18px;
+
+}
+
+
+.logout-button:hover{
+
+    background:#922b21;
+
+}
+
+
+/* ================= TITLE ================= */
+
+.page-title{
+
+    color:#0F5C6E;
+
+    font-size:28px;
+
+    font-weight:bold;
+
+    margin-bottom:20px;
+
+    text-align:right;
+
+}
+
+
+/* ================= TABLE CONTAINER ================= */
+
+.table-container{
+
+    width:100%;
+
+    overflow-x:auto;
+
+}
+
+
+/* ================= TABLE ================= */
+
+.electors-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    background:white;
+
+}
+
+
+.electors-table th{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:14px;
+
+    font-size:18px;
+
+    text-align:center;
+
+}
+
+
+.electors-table td{
+
+    padding:13px;
+
+    border-bottom:1px solid #ddd;
+
+    text-align:center;
+
+    font-size:17px;
+
+}
+
+
+.electors-table tbody tr:hover{
+
+    background:#f1f7f8;
+
+}
+
+
+/* ================= STATUS ================= */
+
+.status-yes{
+
+    color:#27ae60;
+
+    font-weight:bold;
+
+}
+
+
+.status-no{
+
+    color:#c0392b;
+
+    font-weight:bold;
+
+}
+
+
+/* ================= EMPTY MESSAGE ================= */
+
+.empty-message{
+
+    text-align:center;
+
+    padding:30px;
+
+    color:#777;
+
+    font-size:20px;
+
+}
+
+
+/* ================= BACK BUTTON ================= */
+
+.back-button{
+
+    display:inline-block;
+
+    margin-top:25px;
+
+    background:#555;
+
+    color:white;
+
+    padding:12px 25px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:18px;
+
+}
+
+
+.back-button:hover{
+
+    background:#333;
+
+}
+
+</style>
+
+
+<div class="electors-container">
+
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="arabic-header">
+
+        الانتخابات النيابية 2028
+
+        <br>
+
+        {{ district_name }}
+
+        <br>
+
+        قلم رقم {{ ballot_number }}
+
+    </div>
+
+
+    <!-- ================= TOP BAR ================= -->
+
+    <a
+        href="{{ url_for('frontend_bp.dashboard') }}"
+        class="back-button"
+    >
+
+        العودة إلى لوحة التحكم
+
+    </a>
+
+
+    <!-- ================= TITLE ================= -->
+
+    <div class="page-title">
+
+        لائحة ناخبي القلم
+
+    </div>
+
+
+    <!-- ================= TABLE ================= -->
+
+    <div class="table-container">
+
+        <table class="electors-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        رقم الناخب
+                    </th>
+
+                    <th>
+                        الاسم
+                    </th>
+
+                    <th>
+                        العائلة
+                    </th>
+
+                    <th>
+                        رقم القلم
+                    </th>
+
+                    <th>
+                        تم الإدخال
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+            {% if electors %}
+
+                {% for elector in electors %}
+
+                <tr>
+
+                    <td>
+                        {{ elector.elector_id }}
+                    </td>
+
+                    <td>
+                        {{ elector.first_name }}
+                    </td>
+
+                    <td>
+                        {{ elector.family_name }}
+                    </td>
+
+                    <td>
+                        {{ elector.ballot_number }}
+                    </td>
+
+                    <td>
+
+                        {% if elector.submission %}
+
+                            <span class="status-yes">
+                                نعم
+                            </span>
+
+                        {% else %}
+
+                            <span class="status-no">
+                                لا
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
             {% else %}
-                لا
+
+                <tr>
+
+                    <td
+                        colspan="5"
+                        class="empty-message"
+                    >
+
+                        لا يوجد ناخبون مخصصون لهذا القلم.
+
+                    </td>
+
+                </tr>
+
             {% endif %}
-        </td>
 
-    </tr>
+            </tbody>
 
-    {% endfor %}
+        </table>
 
-    </tbody>
+    </div>
 
-</table>
+
+    <!-- ================= BACK ================= -->
+
+    <a
+        href="{{ url_for('frontend_bp.dashboard') }}"
+        class="back-button"
+    >
+
+        العودة إلى لوحة التحكم
+
+    </a>
+
 
 </div>
 

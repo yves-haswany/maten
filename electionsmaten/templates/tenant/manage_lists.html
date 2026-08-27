@@ -547,7 +547,8 @@ td{
         '{{ candidate.name }}',
         '{{ candidate.candidate_list_id }}',
         '{{ candidate.subdistrict_id }}',
-        '{{ candidate.sect_id }}'
+        '{{ candidate.sect_id }}',
+        '{{ candidate.political_allegiance_id }}'
     )">
 
     تعديل
@@ -704,61 +705,117 @@ td{
 
 
 </div>
+<!-- ================= ADD CANDIDATE MODAL ================= -->
+
 <div id="candidateModal" class="modal">
 
-<div class="modal-content">
+    <div class="modal-content">
 
-<h2>
-إضافة مرشح
-</h2>
-
-
-<form method="POST"
-      action="{{ url_for('tenant.add_candidate_ajax') }}">
+        <h2>
+            إضافة مرشح
+        </h2>
 
 
-<input type="hidden"
-       name="list_id"
-       id="candidateListId">
+        <form method="POST"
+              action="{{ url_for('tenant.add_candidate_ajax') }}">
 
 
-<input type="text"
-       name="name"
-       placeholder="اسم المرشح"
-       required>
+            <!-- ================= LIST ================= -->
 
-<select name="subdistrict_id"
-        id="candidateSubdistrictSelect"
-        required>
-
-    <option value="">
-        اختر القضاء
-    </option>
-
-</select>
-<select name="sect_id"
-        id="candidateSectSelect">
-
-</select>
+            <input
+                type="hidden"
+                name="list_id"
+                id="candidateListId">
 
 
-<button class="btn btn-save">
-حفظ
-</button>
+            <!-- ================= NAME ================= -->
+
+            <input
+                type="text"
+                name="name"
+                placeholder="اسم المرشح"
+                required>
 
 
-<button type="button"
-        class="btn btn-close"
-        onclick="closeCandidateModal()">
+            <!-- ================= SUBDISTRICT ================= -->
 
-إلغاء
+            <select
+                name="subdistrict_id"
+                id="candidateSubdistrictSelect"
+                required>
 
-</button>
+                <option value="">
+                    اختر القضاء
+                </option>
+
+            </select>
 
 
-</form>
+            <!-- ================= SECT ================= -->
 
-</div>
+            <select
+                name="sect_id"
+                id="candidateSectSelect"
+                required>
+
+                <option value="">
+                    اختر الطائفة
+                </option>
+
+            </select>
+
+
+            <!-- ================= POLITICAL ALLEGIANCE ================= -->
+
+            <select
+                name="political_allegiance_id"
+                id="candidateAllegianceSelect"
+                required>
+
+                <option value="">
+                    اختر الانتماء السياسي
+                </option>
+
+                {% for allegiance in allegiances %}
+
+                    <option value="{{ allegiance.id }}">
+                        {{ allegiance.name }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+
+            <!-- ================= BUTTONS ================= -->
+
+            <div class="modal-buttons">
+
+                <button
+                    type="submit"
+                    class="btn btn-save">
+
+                    حفظ
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="btn btn-close"
+                    onclick="closeCandidateModal()">
+
+                    إلغاء
+
+                </button>
+
+            </div>
+
+
+        </form>
+
+    </div>
+
 </div>
 <!-- ================= EDIT LIST MODAL ================= -->
 
@@ -913,6 +970,24 @@ td{
 </option>
 
 </select>
+<select name="political_allegiance_id"
+        id="editCandidateAllegiance"
+        required>
+
+    <option value="">
+        اختر الانتماء السياسي
+    </option>
+
+    {% for allegiance in allegiances %}
+
+        <option value="{{ allegiance.id }}">
+            {{ allegiance.name }}
+        </option>
+
+    {% endfor %}
+
+</select>
+
 
 
 
@@ -1367,7 +1442,8 @@ function openEditCandidateModal(
     name,
     list,
     subdistrict,
-    sect
+    sect,
+    allegiance
 ){
 
     document.getElementById(

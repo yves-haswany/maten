@@ -1,0 +1,955 @@
+{% extends "shared/base.html" %}
+
+{% block content %}
+
+<style>
+
+body{
+
+    direction:rtl;
+
+    background:#f4f6f8;
+
+    margin:0;
+
+    font-family:Arial,sans-serif;
+
+}
+
+
+/* ================= MAIN CONTAINER ================= */
+
+.allegiances-container{
+
+    width:95%;
+
+    max-width:1700px;
+
+    margin:35px auto;
+
+    background:white;
+
+    border-radius:12px;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+
+    padding:30px;
+
+}
+
+
+/* ================= HEADER ================= */
+
+.arabic-header{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    text-align:center;
+
+    padding:20px;
+
+    font-size:38px;
+
+    font-weight:bold;
+
+}
+
+
+/* ================= TOP BAR ================= */
+
+.top-bar{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin:25px 0;
+
+}
+
+
+.create-button{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    border:none;
+
+    padding:12px 25px;
+
+    border-radius:8px;
+
+    font-size:17px;
+
+    cursor:pointer;
+
+}
+
+
+.create-button:hover{
+
+    background:#09424f;
+
+}
+
+
+.back-button{
+
+    background:#555;
+
+    color:white;
+
+    padding:12px 25px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:17px;
+
+}
+
+
+.back-button:hover{
+
+    background:#333;
+
+}
+
+
+/* ================= TABLE ================= */
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    background:white;
+
+}
+
+
+th{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:14px;
+
+    font-size:18px;
+
+    text-align:center;
+
+}
+
+
+td{
+
+    padding:14px;
+
+    border-bottom:1px solid #ddd;
+
+    text-align:center;
+
+    font-size:17px;
+
+}
+
+
+tr:hover{
+
+    background:#f1f7f8;
+
+}
+
+
+/* ================= ACTION BUTTONS ================= */
+
+.action-button{
+
+    border:none;
+
+    padding:9px 18px;
+
+    border-radius:6px;
+
+    color:white;
+
+    cursor:pointer;
+
+    font-size:15px;
+
+    margin:3px;
+
+}
+
+
+.edit-button{
+
+    background:#2980b9;
+
+}
+
+
+.edit-button:hover{
+
+    background:#1f618d;
+
+}
+
+
+.delete-button{
+
+    background:#c0392b;
+
+}
+
+
+.delete-button:hover{
+
+    background:#922b21;
+
+}
+
+
+/* ================= MODAL ================= */
+
+.modal{
+
+    display:none;
+
+    position:fixed;
+
+    z-index:1000;
+
+    left:0;
+
+    top:0;
+
+    width:100%;
+
+    height:100%;
+
+    background:rgba(0,0,0,.55);
+
+}
+
+
+.modal-content{
+
+    background:white;
+
+    width:90%;
+
+    max-width:550px;
+
+    margin:10% auto;
+
+    padding:30px;
+
+    border-radius:12px;
+
+    position:relative;
+
+}
+
+
+.modal-content h2{
+
+    color:#0F5C6E;
+
+    margin-top:0;
+
+    text-align:center;
+
+}
+
+
+.close{
+
+    position:absolute;
+
+    left:20px;
+
+    top:15px;
+
+    font-size:30px;
+
+    cursor:pointer;
+
+    color:#777;
+
+}
+
+
+.close:hover{
+
+    color:#000;
+
+}
+
+
+/* ================= FORM ================= */
+
+.form-group{
+
+    margin-bottom:20px;
+
+}
+
+
+.form-group label{
+
+    display:block;
+
+    margin-bottom:8px;
+
+    font-weight:bold;
+
+}
+
+
+.form-group input,
+
+.form-group select{
+
+    width:100%;
+
+    box-sizing:border-box;
+
+    padding:12px;
+
+    border:1px solid #ccc;
+
+    border-radius:7px;
+
+    font-size:16px;
+
+}
+
+
+.submit-button{
+
+    width:100%;
+
+    background:#0F5C6E;
+
+    color:white;
+
+    border:none;
+
+    padding:13px;
+
+    border-radius:8px;
+
+    font-size:17px;
+
+    cursor:pointer;
+
+}
+
+
+.submit-button:hover{
+
+    background:#09424f;
+
+}
+
+
+/* ================= EMPTY ================= */
+
+.empty-message{
+
+    text-align:center;
+
+    padding:30px;
+
+    font-size:18px;
+
+    color:#777;
+
+}
+
+
+/* ================= FLASH ================= */
+
+.flash{
+
+    padding:15px;
+
+    margin-bottom:20px;
+
+    border-radius:8px;
+
+}
+
+
+.flash-success{
+
+    background:#d4edda;
+
+    color:#155724;
+
+}
+
+
+.flash-danger{
+
+    background:#f8d7da;
+
+    color:#721c24;
+
+}
+
+
+.flash-warning{
+
+    background:#fff3cd;
+
+    color:#856404;
+
+}
+
+</style>
+
+
+<div class="allegiances-container">
+
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="arabic-header">
+
+        إدارة الانتماءات السياسية
+
+    </div>
+
+
+    <!-- ================= FLASH MESSAGES ================= -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="flash flash-{{ category }}">
+
+                    {{ message }}
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+
+    {% endwith %}
+
+
+    <!-- ================= TOP BAR ================= -->
+
+    <div class="top-bar">
+
+
+        <button
+            type="button"
+            class="create-button"
+            onclick="openCreateModal()"
+        >
+
+            إضافة انتماء سياسي
+
+        </button>
+
+
+        <a
+            href="{{ url_for('tenant.dashboard') }}"
+            class="back-button"
+        >
+
+            العودة إلى لوحة التحكم
+
+        </a>
+
+
+    </div>
+
+
+    <!-- ================= TABLE ================= -->
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>
+                    الرقم
+                </th>
+
+                <th>
+                    الدائرة
+                </th>
+
+                <th>
+                    الانتماء السياسي
+                </th>
+
+                <th>
+                    الإجراءات
+                </th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+
+        {% if allegiances %}
+
+            {% for allegiance in allegiances %}
+
+            <tr>
+
+                <td>
+
+                    {{ allegiance.id }}
+
+                </td>
+
+
+                <td>
+
+                    {{ district_map.get(
+                        allegiance.district_id,
+                        "غير معروف"
+                    ) }}
+
+                </td>
+
+
+                <td>
+
+                    {{ allegiance.name }}
+
+                </td>
+
+
+                <td>
+
+
+                    <button
+                        type="button"
+                        class="action-button edit-button"
+                        onclick="
+                            openEditModal(
+                                '{{ allegiance.id }}',
+                                '{{ allegiance.name|e }}',
+                                '{{ allegiance.district_id }}'
+                            )
+                        "
+                    >
+
+                        تعديل
+
+                    </button>
+
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'tenant.delete_allegiance',
+                            allegiance_id=allegiance.id
+                        ) }}"
+                        style="display:inline;"
+                        onsubmit="
+                            return confirm(
+                                'هل أنت متأكد من حذف هذا الانتماء السياسي؟'
+                            );
+                        "
+                    >
+
+                        <button
+                            type="submit"
+                            class="action-button delete-button"
+                        >
+
+                            حذف
+
+                        </button>
+
+                    </form>
+
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+
+        {% else %}
+
+            <tr>
+
+                <td
+                    colspan="4"
+                    class="empty-message"
+                >
+
+                    لا يوجد انتماءات سياسية حتى الآن.
+
+                </td>
+
+            </tr>
+
+        {% endif %}
+
+
+        </tbody>
+
+    </table>
+
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- CREATE MODAL -->
+<!-- ================================================= -->
+
+<div
+    id="createModal"
+    class="modal"
+>
+
+    <div class="modal-content">
+
+
+        <span
+            class="close"
+            onclick="closeCreateModal()"
+        >
+
+            &times;
+
+        </span>
+
+
+        <h2>
+
+            إضافة انتماء سياسي
+
+        </h2>
+
+
+        <form
+            method="POST"
+            action="{{ url_for(
+                'tenant.create_allegiance'
+            ) }}"
+        >
+
+
+            <div class="form-group">
+
+                <label>
+
+                    الدائرة
+
+                </label>
+
+
+                <select
+                    name="district_id"
+                    required
+                >
+
+                    <option value="">
+
+                        اختر الدائرة
+
+                    </option>
+
+
+                    {% for district in districts %}
+
+                    <option
+                        value="{{ district.id }}"
+                    >
+
+                        {{ district.name }}
+
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+
+                    اسم الانتماء السياسي
+
+                </label>
+
+
+                <input
+                    type="text"
+                    name="name"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="submit-button"
+            >
+
+                حفظ
+
+            </button>
+
+
+        </form>
+
+
+    </div>
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- EDIT MODAL -->
+<!-- ================================================= -->
+
+<div
+    id="editModal"
+    class="modal"
+>
+
+    <div class="modal-content">
+
+
+        <span
+            class="close"
+            onclick="closeEditModal()"
+        >
+
+            &times;
+
+        </span>
+
+
+        <h2>
+
+            تعديل الانتماء السياسي
+
+        </h2>
+
+
+        <form
+            id="editForm"
+            method="POST"
+        >
+
+
+            <div class="form-group">
+
+                <label>
+
+                    الدائرة
+
+                </label>
+
+
+                <select
+                    id="editDistrictId"
+                    name="district_id"
+                    required
+                >
+
+                    {% for district in districts %}
+
+                    <option
+                        value="{{ district.id }}"
+                    >
+
+                        {{ district.name }}
+
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+
+                    اسم الانتماء السياسي
+
+                </label>
+
+
+                <input
+                    id="editName"
+                    type="text"
+                    name="name"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="submit-button"
+            >
+
+                حفظ التعديلات
+
+            </button>
+
+
+        </form>
+
+
+    </div>
+
+</div>
+
+ <a href="{{ url_for('tenant.dashboard') }}"
+       class="back-link">
+
+        العودة إلى لوحة التحكم
+
+    </a>
+<script>
+
+
+// =====================================================
+// CREATE MODAL
+// =====================================================
+
+function openCreateModal(){
+
+    document.getElementById(
+        "createModal"
+    ).style.display = "block";
+
+}
+
+
+function closeCreateModal(){
+
+    document.getElementById(
+        "createModal"
+    ).style.display = "none";
+
+}
+
+
+// =====================================================
+// EDIT MODAL
+// =====================================================
+
+function openEditModal(
+    allegianceId,
+    allegianceName,
+    districtId
+){
+
+    document.getElementById(
+        "editName"
+    ).value = allegianceName;
+
+
+    document.getElementById(
+        "editDistrictId"
+    ).value = districtId;
+
+
+    document.getElementById(
+        "editForm"
+    ).action =
+        "/tenant/edit-allegiance/" +
+        allegianceId;
+
+
+    document.getElementById(
+        "editModal"
+    ).style.display = "block";
+
+}
+
+
+function closeEditModal(){
+
+    document.getElementById(
+        "editModal"
+    ).style.display = "none";
+
+}
+
+
+// =====================================================
+// CLOSE WHEN CLICKING OUTSIDE
+// =====================================================
+
+window.onclick = function(event){
+
+    const createModal =
+        document.getElementById(
+            "createModal"
+        );
+
+
+    const editModal =
+        document.getElementById(
+            "editModal"
+        );
+
+
+    if(
+        event.target === createModal
+    ){
+
+        closeCreateModal();
+
+    }
+
+
+    if(
+        event.target === editModal
+    ){
+
+        closeEditModal();
+
+    }
+
+};
+
+
+</script>
+
+
+{% endblock %}

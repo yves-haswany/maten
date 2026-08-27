@@ -172,8 +172,6 @@ class BallotPenAccount(Base):
     active_session_token = Column(
         String(255)
     )
-
-    active_session_token = Column(String(255))
 class DistrictAccount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -300,4 +298,31 @@ class PoliticalAllegiance(Base):
     candidates = db.relationship(
         "Candidate",
         back_populates="political_allegiance"
+    )
+    # =====================================================
+# CANCELED PAPER
+# =====================================================
+
+class CanceledPaper(Base):
+
+    __tablename__ = "canceled_paper"
+
+    id = Column(
+        Integer,
+        primary_key=True
+    )
+
+    ballot_pen_id = Column(
+        Integer,
+        nullable=False
+    )
+
+    district_id = Column(
+        Integer
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False
     )

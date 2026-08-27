@@ -1,45 +1,629 @@
 {% extends "shared/base.html" %}
 
 {% block content %}
-<h1>Electors by District</h1>
 
-{% for district_id, district_electors in electors.items() %}
-    <div class="district-section">
-        <h2>
-            District {{ district_id }}
-            {# Add CSV download button #}
-            <a href="{{ url_for('tenant.download_electors', district_id=district_id) }}" 
-               class="btn btn-sm btn-primary" 
-               style="margin-left: 15px;">
-               Download CSV
-            </a>
-        </h2>
+<style>
 
-        {% if district_electors %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Elector ID</th>
-                        <th>Ballot Pen</th>
-                        <th>Submitted At</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for elector in district_electors %}
-                        <tr>
-                            <td>{{ loop.index }}</td>  {# 1-based numbering #}
-                            <td>{{ elector.elector_id }}</td>
-                            <td>{{ elector.ballot_pen[-4:] if elector.ballot_pen else 'N/A' }}</td>
-                            <td>{{ elector.timestamp }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>No electors found for this district.</p>
-        {% endif %}
-    </div>
-{% endfor %}
+/* =========================================
+   MAIN CONTAINER
+========================================= */
+
+.submitted-electors-container{
+
+    width:95%;
+    max-width:1700px;
+
+    margin:35px auto;
+
+    background:white;
+
+    border-radius:12px;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.12);
+
+    padding:30px;
+
+    direction:rtl;
+}
+
+
+/* =========================================
+   PAGE TITLE
+========================================= */
+
+.page-title{
+
+    text-align:center;
+
+    color:#0F5C6E;
+
+    font-size:32px;
+
+    margin:0 0 30px 0;
+}
+
+
+/* =========================================
+   DISTRICT SECTION
+========================================= */
+
+.district-section{
+
+    margin-bottom:30px;
+
+    border:1px solid #d8e0e3;
+
+    border-radius:10px;
+
+    overflow:hidden;
+}
+
+
+/* =========================================
+   DISTRICT HEADER
+========================================= */
+
+.district-header{
+
+    background:#0F5C6E;
+
+    color:white;
+
+    padding:16px 20px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    gap:15px;
+
+    flex-wrap:wrap;
+}
+
+
+.district-header h2{
+
+    margin:0;
+
+    font-size:23px;
+}
+
+
+/* =========================================
+   ACTION BUTTONS
+========================================= */
+
+.action-button{
+
+    border:none;
+
+    padding:9px 18px;
+
+    border-radius:6px;
+
+    color:white;
+
+    cursor:pointer;
+
+    font-size:15px;
+
+    margin:3px;
+
+    text-decoration:none;
+
+    display:inline-block;
+
+    transition:.2s;
+}
+
+
+/* =========================================
+   CSV BUTTON
+========================================= */
+
+.csv-button{
+
+    background:#2980b9;
+
+}
+
+
+.csv-button:hover{
+
+    background:#1f618d;
+
+}
+
+
+/* =========================================
+   BACK BUTTON
+========================================= */
+
+.back-button{
+
+    background:#555;
+
+}
+
+
+.back-button:hover{
+
+    background:#333;
+
+}
+
+
+/* =========================================
+   TABLE WRAPPER
+========================================= */
+
+.table-wrapper{
+
+    width:100%;
+
+    overflow-x:auto;
+}
+
+
+/* =========================================
+   TABLE
+========================================= */
+
+.submitted-electors-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    background:white;
+
+    min-width:1250px;
+}
+
+
+/* =========================================
+   TABLE HEADER
+========================================= */
+
+.submitted-electors-table th{
+
+    background:#eef4f5;
+
+    color:#173d47;
+
+    padding:14px 10px;
+
+    text-align:center;
+
+    border-bottom:2px solid #0F5C6E;
+
+    white-space:nowrap;
+}
+
+
+/* =========================================
+   TABLE CELLS
+========================================= */
+
+.submitted-electors-table td{
+
+    padding:13px 10px;
+
+    text-align:center;
+
+    border-bottom:1px solid #e2e7e9;
+
+    white-space:nowrap;
+}
+
+
+/* =========================================
+   ALTERNATING ROWS
+========================================= */
+
+.submitted-electors-table tbody tr:nth-child(even){
+
+    background:#f8fafb;
+}
+
+
+/* =========================================
+   HOVER
+========================================= */
+
+.submitted-electors-table tbody tr:hover{
+
+    background:#eaf3f5;
+}
+
+
+/* =========================================
+   IMPORTANT VALUES
+========================================= */
+
+.elector-code{
+
+    font-weight:bold;
+
+    color:#0F5C6E;
+}
+
+
+.ballot-number{
+
+    font-weight:bold;
+}
+
+
+.submitted-date{
+
+    direction:ltr;
+}
+
+
+/* =========================================
+   EMPTY MESSAGE
+========================================= */
+
+.empty-message{
+
+    padding:30px;
+
+    text-align:center;
+
+    color:#777;
+
+    font-size:17px;
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media(max-width:768px){
+
+    .submitted-electors-container{
+
+        width:92%;
+
+        padding:15px;
+    }
+
+
+    .district-header{
+
+        flex-direction:column;
+
+        text-align:center;
+    }
+
+}
+
+</style>
+
+
+<div class="submitted-electors-container">
+
+
+    <!-- =========================================
+         PAGE TITLE
+    ========================================= -->
+
+    <h1 class="page-title">
+
+        الناخبون الذين تم تسجيلهم
+
+    </h1>
+
+
+    <!-- =========================================
+         DISTRICTS
+    ========================================= -->
+
+    {% if electors %}
+
+        {% for district_id, district_electors in electors.items() %}
+
+
+            <div class="district-section">
+
+
+                <!-- =================================
+                     DISTRICT HEADER
+                ================================= -->
+
+                <div class="district-header">
+
+
+                    <h2>
+
+                        {% if district_electors[0].district_name %}
+
+                            {{ district_electors[0].district_name }}
+
+                        {% else %}
+
+                            الدائرة رقم {{ district_id }}
+
+                        {% endif %}
+
+                    </h2>
+
+
+                    <!-- =================================
+                         CSV BUTTON
+                    ================================= -->
+
+                    <a
+                        href="{{ url_for(
+                            'tenant.download_electors',
+                            district_id=district_id
+                        ) }}"
+                        class="action-button csv-button"
+                    >
+
+                        تحميل بصيغة CSV
+
+                    </a>
+
+
+                    <!-- =================================
+                         BACK TO DASHBOARD
+                    ================================= -->
+
+                    <a
+                        href="{{ url_for('tenant.dashboard') }}"
+                        class="action-button back-button"
+                    >
+
+                        العودة إلى لوحة التحكم
+
+                    </a>
+
+
+                </div>
+
+
+                <!-- =================================
+                     ELECTORS TABLE
+                ================================= -->
+
+                <div class="table-wrapper">
+
+
+                    <table class="submitted-electors-table">
+
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    رقم المستأجر
+                                </th>
+
+                                <th>
+                                    رقم الدائرة
+                                </th>
+
+                                <th>
+                                    رقم الناخب
+                                </th>
+
+                                <th>
+                                    اسم الناخب
+                                </th>
+
+                                <th>
+                                    الدائرة
+                                </th>
+
+                                <th>
+                                    القضاء
+                                </th>
+
+                                <th>
+                                    البلدية
+                                </th>
+
+                                <th>
+                                    رقم القلم
+                                </th>
+
+                                <th>
+                                    رمز قلم الاقتراع
+                                </th>
+
+                                <th>
+                                    مركز الاقتراع
+                                </th>
+
+                                <th>
+                                    الغرفة
+                                </th>
+
+                                <th>
+                                    تاريخ التسجيل
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+
+                            {% for elector in district_electors %}
+
+                                <tr>
+
+
+                                    <!-- TENANT -->
+
+                                    <td>
+
+                                        {{ tenant.id }}
+
+                                    </td>
+
+
+                                    <!-- DISTRICT NUMBER -->
+
+                                    <td>
+
+                                        {{ elector.district_id }}
+
+                                    </td>
+
+
+                                    <!-- ELECTOR CODE -->
+
+                                    <td class="elector-code">
+
+                                        {{ elector.elector_code }}
+
+                                    </td>
+
+
+                                    <!-- ELECTOR NAME -->
+
+                                    <td>
+
+                                        {{ elector.first_name or '' }}
+
+                                        {{ elector.surname or '' }}
+
+                                    </td>
+
+
+                                    <!-- DISTRICT -->
+
+                                    <td>
+
+                                        {{ elector.district_id }}
+
+                                    </td>
+
+
+                                    <!-- SUBDISTRICT -->
+
+                                    <td>
+
+                                        {{ elector.subdistrict_name or 'غير متوفر' }}
+
+                                    </td>
+
+
+                                    <!-- MUNICIPALITY -->
+
+                                    <td>
+
+                                        {{ elector.municipality or 'غير متوفر' }}
+
+                                    </td>
+
+
+                                    <!-- BALLOT NUMBER -->
+
+                                    <td class="ballot-number">
+
+                                        {{ elector.ballot_number or 'غير متوفر' }}
+
+                                    </td>
+
+
+                                    <!-- BALLOT PEN CODE -->
+
+                                    <td>
+
+                                        {% if elector.ballot_pen_id
+                                              and elector.ballot_pen_id in ballot_pens %}
+
+                                            {{ ballot_pens[elector.ballot_pen_id].code }}
+
+                                        {% else %}
+
+                                            غير متوفر
+
+                                        {% endif %}
+
+                                    </td>
+
+
+                                    <!-- POLLING CENTER -->
+
+                                    <td>
+
+                                        {{ elector.polling_center_name or 'غير متوفر' }}
+
+                                    </td>
+
+
+                                    <!-- ROOM -->
+
+                                    <td>
+
+                                        {{ elector.room_name or 'غير متوفر' }}
+
+                                    </td>
+
+
+                                    <!-- SUBMITTED AT -->
+
+                                    <td class="submitted-date">
+
+                                        {% if elector.submitted_at %}
+
+                                            {{ elector.submitted_at.strftime(
+                                                '%Y-%m-%d %H:%M:%S'
+                                            ) }}
+
+                                        {% else %}
+
+                                            غير متوفر
+
+                                        {% endif %}
+
+                                    </td>
+
+
+                                </tr>
+
+                            {% endfor %}
+
+
+                        </tbody>
+
+
+                    </table>
+
+                </div>
+
+
+            </div>
+
+
+        {% endfor %}
+
+
+    {% else %}
+
+
+        <div class="empty-message">
+
+            لا يوجد ناخبون تم تسجيلهم حتى الآن.
+
+        </div>
+
+
+    {% endif %}
+
+
+</div>
+
 
 {% endblock %}
